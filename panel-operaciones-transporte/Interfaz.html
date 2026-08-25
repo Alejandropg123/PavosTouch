@@ -1,1073 +1,2630 @@
-<style>
-  :root{
-    --azul-oscuro:#0f2942;
-    --azul:#1d4ed8;
-    --azul-suave:#eaf1fb;
-    --verde:#178a4c;
-    --verde-suave:#e6f6ec;
-    --ambar:#b5650a;
-    --ambar-suave:#fdf1e0;
-    --rojo:#c0342b;
-    --rojo-suave:#fbe9e7;
-    --gris:#64748b;
-    --borde:#dbe3ee;
-    --fondo:#f3f6fb;
-    --superficie:#ffffff;
-    --texto:#1e2a3a;
-    --texto-suave:#64748b;
-    --sombra:0 1px 2px rgba(15,41,66,.06), 0 10px 24px -16px rgba(15,41,66,.35);
-    --radio:10px;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;}
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:var(--fondo);
-    color:var(--texto);
-    font-size:13.5px;
-  }
-  .app{display:flex;flex-direction:column;height:100vh;}
+<!DOCTYPE html>
 
-  /* ---------- Encabezado + selector de modo ---------- */
-  .encabezado{
-    background:var(--azul-oscuro);
-    color:#fff;
-    padding:12px 18px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:16px;
-    flex-shrink:0;
-  }
-  .encabezado h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px;}
-  .selector-modo{display:flex;align-items:center;gap:8px;}
-  .selector-modo label{font-size:12px;color:#c7d6ea;}
-  .selector-modo select{
-    background:#16324f;
-    color:#fff;
-    border:1px solid #2a4a6b;
-    border-radius:8px;
-    padding:7px 10px;
-    font-size:13px;
-    font-weight:600;
-    cursor:pointer;
-  }
+<html>
 
-  /* ---------- Pestañas ---------- */
-  .tabs{
-    display:flex;
-    gap:4px;
-    background:var(--superficie);
-    padding:8px 14px 0;
-    border-bottom:1px solid var(--borde);
-    flex-shrink:0;
-  }
-  .tab-btn{
-    border:none;
-    background:transparent;
-    padding:10px 16px;
-    font-size:13.5px;
-    font-weight:600;
-    color:var(--texto-suave);
-    cursor:pointer;
-    border-radius:8px 8px 0 0;
-    border-bottom:3px solid transparent;
-  }
-  .tab-btn:hover{background:var(--azul-suave);}
-  .tab-btn.activo{color:var(--azul);border-bottom:3px solid var(--azul);background:var(--azul-suave);}
+<head>
 
-  .contenido{flex:1;overflow:auto;padding:16px;}
-  .panel-tab{display:none;}
-  .panel-tab.activo{display:block;}
+  <base target="_top">
 
-  /* ---------- Layout genérico ---------- */
-  .grid-2{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;align-items:start;}
-  .tarjeta{
-    background:var(--superficie);
-    border:1px solid var(--borde);
-    border-radius:var(--radio);
-    box-shadow:var(--sombra);
-    padding:16px;
-    margin-bottom:14px;
-  }
-  .tarjeta h2{font-size:13.5px;margin:0 0 12px;color:var(--azul-oscuro);display:flex;align-items:center;gap:6px;}
-  .tarjeta h3{font-size:12.5px;margin:0 0 8px;color:var(--texto);}
 
-  .fila-busqueda{display:flex;gap:8px;margin-bottom:10px;}
-  .fila-busqueda input[type="text"]{flex:1;}
-  .filtros-rapidos{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;}
-  .filtros-rapidos label{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--texto-suave);cursor:pointer;}
+  <style>
 
-  input[type="text"],input[type="date"],input[type="number"],select,textarea{
-    width:100%;
-    padding:8px 10px;
-    border:1px solid var(--borde);
-    border-radius:8px;
-    font-size:13px;
-    font-family:inherit;
-    color:var(--texto);
-    background:#fff;
-  }
-  input:focus,select:focus,textarea:focus{outline:2px solid #bcd2f7;border-color:var(--azul);}
-  label.campo{display:block;font-size:11.5px;font-weight:600;color:var(--texto-suave);margin-bottom:4px;margin-top:8px;}
-  label.campo:first-child{margin-top:0;}
+    :root {
 
-  .btn{
-    border:none;
-    border-radius:8px;
-    padding:9px 14px;
-    font-size:13px;
-    font-weight:600;
-    cursor:pointer;
-    background:var(--azul);
-    color:#fff;
-  }
-  .btn:hover{filter:brightness(1.08);}
-  .btn:disabled{opacity:.55;cursor:not-allowed;}
-  .btn-secundario{background:var(--azul-suave);color:var(--azul);}
-  .btn-fantasma{background:transparent;color:var(--azul);border:1px solid var(--borde);}
-  .btn-pequeno{padding:5px 9px;font-size:12px;border-radius:6px;}
-  .btn-fila{display:flex;gap:8px;margin-top:14px;}
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --bg-body: #f8fafc;
+      --text-main: #1e293b;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
 
-  /* ---------- Tabla ---------- */
-  .tabla-wrap{overflow:auto;max-height:56vh;border:1px solid var(--borde);border-radius:8px;}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;}
-  thead th{
-    position:sticky;top:0;
-    background:var(--azul-suave);
-    color:var(--azul-oscuro);
-    text-align:left;
-    padding:8px 10px;
-    font-size:11.5px;
-    text-transform:uppercase;
-    letter-spacing:.3px;
-    border-bottom:1px solid var(--borde);
-    white-space:nowrap;
-  }
-  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;white-space:nowrap;}
-  tbody tr:hover{background:#f7fafd;}
-  tbody tr.fila-exacta{background:#fff8e1;}
+    }
 
-  /* ---------- Badges y documentos ---------- */
-  .badge{
-    display:inline-block;
-    padding:3px 9px;
-    border-radius:999px;
-    font-size:11px;
-    font-weight:700;
-    white-space:nowrap;
-  }
-  .badge-ok{background:var(--verde-suave);color:var(--verde);}
-  .badge-falta{background:var(--rojo-suave);color:var(--rojo);}
-  .badge-pendiente{background:var(--ambar-suave);color:var(--ambar);}
-  .badge-neutro{background:#eef2f7;color:var(--texto-suave);}
-  .btn-doc{
-    display:inline-flex;align-items:center;gap:4px;
-    background:var(--azul-suave);color:var(--azul);
-    padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;
-    text-decoration:none;
-  }
-  .btn-doc:hover{filter:brightness(0.95);}
 
-  /* ---------- Bloques de la consulta agrupada ---------- */
-  .bloques-consulta{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  .campo-lectura{margin-bottom:9px;}
-  .campo-lectura .etq{font-size:11px;color:var(--texto-suave);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
-  .campo-lectura .val{font-size:13.5px;color:var(--texto);margin-top:2px;}
-  .lista-docs{display:flex;flex-direction:column;gap:10px;}
-  .fila-doc{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--borde);}
-  .fila-doc:last-child{border-bottom:none;}
-  .fila-doc .nombre-doc{font-size:12.5px;font-weight:600;color:var(--texto);}
+    * {
+      box-sizing: border-box;
+    }
 
-  .mensaje-vacio{
-    padding:22px;text-align:center;color:var(--texto-suave);
-    border:1px dashed var(--borde);border-radius:10px;background:#fbfdff;
-    font-size:13px;
-  }
-  .mensaje-alerta{
-    padding:14px 16px;border-radius:8px;background:var(--ambar-suave);color:var(--ambar);
-    font-size:13px;font-weight:600;
-  }
 
-  /* ---------- Checklist de gastos ---------- */
-  .checklist-gastos{display:flex;flex-direction:column;gap:8px;}
-  .fila-gasto{
-    display:grid;grid-template-columns:22px 1fr 130px;align-items:center;gap:10px;
-    padding:6px 0;border-bottom:1px solid #f1f4f8;
-  }
-  .fila-gasto:last-child{border-bottom:none;}
-  .fila-gasto input[type="checkbox"]{width:16px;height:16px;}
-  .fila-gasto span{font-size:12.5px;color:var(--texto);}
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      padding: 20px;
+      margin: 0;
+    }
 
-  table.tabla-resumen{width:100%;font-size:12.5px;border-collapse:collapse;}
-  table.tabla-resumen td{padding:5px 4px;border-bottom:1px solid #f1f4f8;}
-  table.tabla-resumen td:last-child{text-align:right;font-weight:600;}
-  .totales-resumen{margin-top:8px;padding-top:8px;border-top:2px solid var(--borde);}
-  .totales-resumen .linea{display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px;}
-  .totales-resumen .linea.total{font-weight:700;font-size:13.5px;}
 
-  .anticipos-slots{display:flex;flex-direction:column;gap:10px;}
-  .anticipo-slot{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;border:1px solid var(--borde);border-radius:8px;background:#fbfdff;}
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      max-width: 1150px;
+      margin: auto;
+    }
 
-  details.editar-gastos summary{cursor:pointer;font-weight:600;color:var(--azul);font-size:12.5px;padding:4px 0;}
 
-  /* ---------- Toasts ---------- */
-  #toasts{position:fixed;bottom:18px;right:18px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
-  .toast{
-    min-width:240px;max-width:360px;
-    padding:11px 14px;border-radius:8px;
-    font-size:13px;font-weight:500;
-    box-shadow:var(--sombra);
-    color:#fff;
-    animation:entrar .18s ease-out;
-  }
-  .toast-exito{background:var(--verde);}
-  .toast-error{background:var(--rojo);}
-  .toast-info{background:var(--azul);}
-  @keyframes entrar{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+    h2 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: var(--text-main);
+    }
 
-  /* ---------- Overlay de carga ---------- */
-  #overlay-carga{
-    position:fixed;inset:0;background:rgba(15,41,66,.15);
-    display:none;align-items:center;justify-content:center;z-index:9998;
-  }
-  #overlay-carga.visible{display:flex;}
-  .spinner{
-    width:40px;height:40px;border-radius:50%;
-    border:4px solid #ffffff;border-top-color:var(--azul);
-    animation:girar .7s linear infinite;
-  }
-  @keyframes girar{to{transform:rotate(360deg);}}
 
-  @media (max-width:980px){
-    .grid-2{grid-template-columns:1fr;}
-    .bloques-consulta{grid-template-columns:1fr;}
-  }
-</style>
+    /* SELECTOR DE MODO (JF / Llano) */
 
-<div class="app">
+    .modo-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
 
-  <div class="encabezado">
-    <h1>🚛 Panel de Gestión de Operaciones</h1>
-    <div class="selector-modo">
-      <label for="selectModo">Modo:</label>
-      <select id="selectModo"></select>
-    </div>
+
+    .modo-bar label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #64748b;
+      margin: 0;
+    }
+
+
+    .modo-bar select {
+      width: auto;
+      min-width: 260px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      border-color: var(--primary);
+    }
+
+
+    /* PESTAÑAS */
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 10px 16px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #64748b;
+      border-bottom: 3px solid transparent;
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+
+    .tab-btn.activa {
+      color: var(--primary);
+      border-bottom: 3px solid var(--primary);
+    }
+
+
+    .tab-panel {
+      display: none;
+    }
+
+
+    .tab-panel.activa {
+      display: block;
+    }
+
+
+    /* FORMULARIO */
+
+    .grid-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+
+    .form-group.wide {
+      grid-column: span 2;
+    }
+
+
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #64748b;
+    }
+
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+    }
+
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.10);
+    }
+
+
+    /* BOTONES */
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+
+    button {
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+
+    button:disabled {
+      background: #94a3b8 !important;
+      cursor: not-allowed;
+    }
+
+
+    .btn-save {
+      flex: 1;
+      background: var(--primary);
+      color: white;
+    }
+
+
+    .btn-clear {
+      flex: 1;
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+
+    /* ESTADO / SPINNER */
+
+    #status,
+    #statusGasto {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 15px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid #e5e7eb;
+      border-top: 3px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+
+    /* TOASTS */
+
+    #toastContainer {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 999;
+    }
+
+
+    .toast {
+      min-width: 260px;
+      max-width: 380px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      opacity: 0;
+      transform: translateX(20px);
+      transition: 0.25s;
+    }
+
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--danger); }
+    .toast.info { background: var(--primary); }
+
+
+    /* BUSCADOR */
+
+    .search-container {
+      display: flex;
+      gap: 10px;
+      margin: 25px 0 10px 0;
+    }
+
+
+    .search-container input {
+      flex: 1;
+      margin: 0;
+    }
+
+
+    .btn-search {
+      width: 130px;
+      background: var(--primary);
+      color: white;
+    }
+
+
+    .search-hint {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin: -4px 0 10px 2px;
+    }
+
+
+    /* FILTROS RÁPIDOS */
+
+    .filtros-rapidos {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+
+    .btn-filtro {
+      background: #e2e8f0;
+      color: #475569;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      border-radius: 999px;
+    }
+
+
+    .btn-filtro.activo.filtro-facturado {
+      background: var(--primary);
+      color: white;
+    }
+
+
+    .btn-filtro.activo.filtro-legalizado {
+      background: var(--success);
+      color: white;
+    }
+
+
+    .leyenda-colores {
+      display: flex;
+      gap: 16px;
+      font-size: 0.76rem;
+      color: #64748b;
+      margin: 6px 0 14px 2px;
+    }
+
+
+    .leyenda-colores span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+
+    .leyenda-punto {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+
+    /* TABLA */
+
+    .table-container {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+
+    .table-scroll {
+      overflow-x: auto;
+      max-height: 350px;
+      overflow-y: auto;
+    }
+
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      min-width: 1050px;
+    }
+
+
+    th {
+      background: #f8fafc;
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+
+    td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+
+    tbody tr.fila-legalizada {
+      box-shadow: inset 4px 0 0 var(--success);
+    }
+
+
+    tbody tr.fila-facturada:not(.fila-legalizada) {
+      box-shadow: inset 4px 0 0 var(--primary);
+    }
+
+
+    .badge-mini {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+
+    .badge-mini.si { background: #dcfce7; color: var(--success); }
+    .badge-mini.no { background: #f1f5f9; color: #64748b; }
+
+
+    tbody tr:hover {
+      background: #eff6ff;
+    }
+
+
+    .empty {
+      text-align: center;
+      padding: 25px;
+      color: #64748b;
+    }
+
+
+    .contador {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin: 8px 2px 0 2px;
+    }
+
+
+    /* RESUMEN DE OS (pestaña Gastos) */
+
+    .resumen-os {
+      display: none;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px 16px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+
+    .resumen-os.activa {
+      display: grid;
+    }
+
+
+    .resumen-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+
+    .resumen-item .label-mini {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+
+    .resumen-item .valor-mini {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+
+    .btn-editar-gastos {
+      background: #eef2ff;
+      color: #4338ca;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      border-radius: 6px;
+    }
+
+
+    /* EDICIÓN DE GASTOS/ANTICIPOS YA GUARDADOS */
+
+    .edicion-gastos {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+
+    .edicion-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px 14px;
+      margin-top: 10px;
+    }
+
+
+    .edicion-grid-anticipos {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+
+    .edicion-campo label {
+      display: block;
+      font-size: 0.72rem;
+      color: #92400e;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+
+    .edicion-campo input {
+      width: 100%;
+    }
+
+
+    .edicion-campo-anticipo {
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      padding: 8px;
+      background: white;
+    }
+
+
+    .btn-guardar {
+      background: var(--success);
+      color: white;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+
+    .btn-cancelar {
+      background: #e2e8f0;
+      color: #475569;
+      padding: 9px 16px;
+      border-radius: 6px;
+    }
+
+
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      width: fit-content;
+    }
+
+
+    .badge.ok { background: #dcfce7; color: var(--success); }
+    .badge.falta { background: #fee2e2; color: var(--danger); }
+
+    .badge-link {
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .badge-link:hover {
+      background: #bbf7d0;
+    }
+    .badge.completo { background: #dcfce7; color: var(--success); }
+    .badge.pendiente { background: #fef3c7; color: var(--warning); }
+
+
+    /* CASILLAS DE TIPO DE GASTO */
+
+    .gastos-checklist {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+
+    .gasto-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fafbfc;
+    }
+
+
+    .gasto-item.marcado {
+      border-color: var(--primary);
+      background: #eff6ff;
+    }
+
+
+    .gasto-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+
+    .gasto-item label.gasto-nombre {
+      flex: 1;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      margin: 0;
+      cursor: pointer;
+    }
+
+
+    .gasto-item input.gasto-valor {
+      width: 130px;
+      padding: 7px 9px;
+      font-size: 13px;
+      display: none;
+    }
+
+
+    .gasto-item.marcado input.gasto-valor {
+      display: block;
+    }
+
+
+    .soporte-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+
+    .soporte-toggle input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+
+    .anticipo-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+
+    .btn-anticipo {
+      background: var(--warning);
+      color: white;
+      white-space: nowrap;
+    }
+
+
+    .resumen-tabla {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin-top: 10px;
+    }
+
+
+    .resumen-tabla th,
+    .resumen-tabla td {
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+
+    .resumen-tabla th {
+      background: #f8fafc;
+    }
+
+
+    /* PESTAÑA "CONSULTAR OPERACIÓN" */
+
+    .bloques-consulta {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 14px;
+    }
+
+
+    .bloque-consulta {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fafbfc;
+    }
+
+
+    .bloque-consulta h3 {
+      margin: 0 0 12px;
+      font-size: 0.92rem;
+      color: var(--text-main);
+    }
+
+
+    .bloque-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px 16px;
+    }
+
+
+    .doc-fila {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+
+    .doc-fila:last-child {
+      border-bottom: none;
+    }
+
+
+    .doc-fila .doc-nombre {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text-main);
+    }
+
+
+    .alerta-no-encontrada {
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+
+
+    @media (max-width: 850px) {
+      .gastos-checklist {
+        grid-template-columns: 1fr;
+      }
+      .anticipo-form {
+        grid-template-columns: 1fr;
+      }
+      .bloque-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+
+    /* RESPONSIVE */
+
+    @media (max-width: 850px) {
+
+      .grid-form {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group.wide {
+        grid-column: span 1;
+      }
+
+      .resumen-os {
+        grid-template-columns: 1fr 1fr;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+<div id="toastContainer"></div>
+
+
+<div class="card">
+
+
+  <h2>
+    🚛 Gestión de Operaciones de Transporte
+  </h2>
+
+
+  <!-- SELECTOR DE MODO: determina si se lee/escribe 'operaciones' (JF) o 'Control_llano' -->
+
+  <div class="modo-bar">
+    <label for="modoActivo">Modo:</label>
+    <select id="modoActivo" onchange="cambiarModo(this.value)">
+      <option value="JF">JF - Jorge Luis Fonseca</option>
+      <option value="LLANO">Llano - Multiservicios Llanocarga</option>
+    </select>
   </div>
+
+
+  <!-- PESTAÑAS -->
 
   <div class="tabs">
-    <button class="tab-btn activo" data-tab="tab-operaciones" type="button">📋 Operaciones</button>
-    <button class="tab-btn" data-tab="tab-gastos" type="button">💰 Gastos por conductor</button>
-    <button class="tab-btn" data-tab="tab-consulta" type="button">🔎 Consultar Operación</button>
+    <button class="tab-btn activa" id="tabBtnOperaciones" onclick="cambiarTab('operaciones')">
+      📋 Operaciones
+    </button>
+    <button class="tab-btn" id="tabBtnGastos" onclick="cambiarTab('gastos')">
+      💰 Gastos por conductor
+    </button>
+    <button class="tab-btn" id="tabBtnConsulta" onclick="cambiarTab('consulta')">
+      🔎 Consultar Operación
+    </button>
   </div>
 
-  <div class="contenido">
 
-    <!-- ================= TAB 1: OPERACIONES ================= -->
-    <div class="panel-tab activo" id="tab-operaciones">
-      <div class="grid-2">
+  <!-- ===================================================== -->
+  <!-- PESTAÑA 1: OPERACIONES (igual que el panel original)   -->
+  <!-- ===================================================== -->
 
-        <div>
-          <div class="tarjeta">
-            <h2>📋 Operaciones registradas</h2>
+  <div class="tab-panel activa" id="panelOperaciones">
 
-            <div class="fila-busqueda">
-              <input type="text" id="buscarOperacionesInput" placeholder="Buscar por OS, placa, ruta o conductor...">
-              <button class="btn btn-secundario" id="btnLimpiarBusqueda" type="button">Limpiar</button>
-            </div>
 
-            <div class="filtros-rapidos">
-              <label><input type="checkbox" id="filtroFacturado"> Solo facturadas</label>
-              <label><input type="checkbox" id="filtroLegalizado"> Solo legalizadas (gastos completos)</label>
-            </div>
+    <!-- FORMULARIO -->
 
-            <div class="tabla-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>OS</th>
-                    <th>Estado facturación</th>
-                    <th>Estado operación</th>
-                    <th>Placa</th>
-                    <th>Ruta</th>
-                    <th>Conductor</th>
-                    <th>Gastos</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody id="cuerpoTablaOperaciones">
-                  <tr><td colspan="9" class="mensaje-vacio">Cargando operaciones…</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+    <div class="grid-form">
 
-        <div>
-          <div class="tarjeta">
-            <h2 id="tituloFormOperacion">➕ Nueva operación</h2>
-            <form id="formOperacion">
 
-              <label class="campo" for="campoFecha">Fecha de operación *</label>
-              <input type="date" id="campoFecha" required>
-
-              <label class="campo" for="campoOS">OS interna *</label>
-              <input type="text" id="campoOS" required placeholder="Ej: JF-219">
-
-              <label class="campo" for="campoEstadoFacturacion">Estado de facturación</label>
-              <input type="text" id="campoEstadoFacturacion" list="listaEstadosFacturacion" placeholder="Ej: FACTURADA">
-              <datalist id="listaEstadosFacturacion"></datalist>
-
-              <label class="campo" for="campoEstadoOperacion">Estado de operación</label>
-              <input type="text" id="campoEstadoOperacion" list="listaEstadosOperacion" placeholder="Ej: FINALIZADO">
-              <datalist id="listaEstadosOperacion"></datalist>
-
-              <label class="campo" for="campoPlaca">Placa vehículo</label>
-              <input type="text" id="campoPlaca" list="listaPlacas">
-              <datalist id="listaPlacas"></datalist>
-
-              <label class="campo" for="campoRuta">Ruta</label>
-              <input type="text" id="campoRuta" list="listaRutas">
-              <datalist id="listaRutas"></datalist>
-
-              <label class="campo" for="campoCarga">Carga</label>
-              <input type="text" id="campoCarga" list="listaCargas">
-              <datalist id="listaCargas"></datalist>
-
-              <label class="campo" for="campoCliente">Cliente / Empresa</label>
-              <input type="text" id="campoCliente" list="listaClientes">
-              <datalist id="listaClientes"></datalist>
-
-              <label class="campo" for="campoConductor">Conductor</label>
-              <input type="text" id="campoConductor" list="listaConductores">
-              <datalist id="listaConductores"></datalist>
-
-              <label class="campo" for="campoManifiesto">Manifiesto / Remesa</label>
-              <input type="text" id="campoManifiesto" placeholder="Número de manifiesto y/o remesa">
-
-              <div class="btn-fila">
-                <button type="submit" class="btn" id="btnGuardarOperacion">Guardar operación</button>
-                <button type="button" class="btn btn-fantasma" id="btnLimpiarFormOperacion">Limpiar formulario</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
+      <div class="form-group">
+        <label>FECHA OPERACIÓN</label>
+        <input type="date" id="fecha">
       </div>
+
+
+      <div class="form-group">
+        <label>OS INTERNA</label>
+        <input type="text" id="os" placeholder="Ej: JF-205">
+      </div>
+
+
+      <div class="form-group">
+        <label>ESTADO FACTURACIÓN</label>
+        <select id="estadoFacturacion">
+          <option value="">Seleccione...</option>
+        </select>
+      </div>
+
+
+      <div class="form-group">
+        <label>ESTADO OPERACIÓN</label>
+        <select id="estadoOperacion">
+          <option value="">Seleccione...</option>
+        </select>
+      </div>
+
+
+      <div class="form-group">
+        <label>PLACA VEHÍCULO</label>
+        <select id="placa">
+          <option value="">Seleccione...</option>
+        </select>
+      </div>
+
+
+      <div class="form-group">
+        <label>CONDUCTOR</label>
+        <select id="conductor">
+          <option value="">Seleccione...</option>
+        </select>
+      </div>
+
+
+      <div class="form-group wide">
+        <label>RUTA</label>
+        <select id="ruta">
+          <option value="">Seleccione...</option>
+        </select>
+      </div>
+
+
+      <div class="form-group wide">
+        <label>CARGA</label>
+        <select id="carga">
+          <option value="">Seleccione...</option>
+        </select>
+      </div>
+
+
+      <div class="form-group">
+        <label>CLIENTE EMPRESA</label>
+        <select id="cliente">
+          <option value="">Seleccione...</option>
+        </select>
+      </div>
+
+
+      <div class="form-group wide">
+        <label>NÚMERO MANIFIESTO Y REMESA</label>
+        <input type="text" id="manifiesto" placeholder="Manifiesto / Remesa">
+      </div>
+
+
     </div>
 
-    <!-- ================= TAB 2: GASTOS POR CONDUCTOR ================= -->
-    <div class="panel-tab" id="tab-gastos">
-      <div class="grid-2">
 
-        <div>
-          <div class="tarjeta">
-            <h2>🔍 Resumen de gastos por OS</h2>
-            <div class="fila-busqueda">
-              <input type="text" id="gastosOSInput" list="listaOSDisponibles" placeholder="Escribe la OS interna...">
-              <datalist id="listaOSDisponibles"></datalist>
-              <button class="btn" id="btnBuscarResumen" type="button">Buscar</button>
-            </div>
-            <div id="resumenGastosContenedor">
-              <div class="mensaje-vacio">Escribe una OS y presiona "Buscar" para ver su resumen de gastos.</div>
-            </div>
-          </div>
+    <!-- BOTONES -->
 
-          <div class="tarjeta" id="tarjetaEditarGastos" style="display:none;">
-            <details class="editar-gastos">
-              <summary>✏️ Editar / sobrescribir gastos y anticipos de esta OS</summary>
-              <div style="margin-top:12px;">
-                <h3>Sobrescribir gastos por categoría</h3>
-                <div class="checklist-gastos" id="checklistEditarGastos"></div>
+    <div class="btn-group">
 
-                <h3 style="margin-top:16px;">Sobrescribir anticipos</h3>
-                <div class="anticipos-slots" id="slotsEditarAnticipos"></div>
+      <button id="btnGuardar" class="btn-save" onclick="registrar()">
+        💾 Guardar / Actualizar
+      </button>
 
-                <div class="btn-fila">
-                  <button class="btn" id="btnGuardarEdicionGastos" type="button">Guardar cambios (sobrescribe)</button>
-                </div>
-              </div>
-            </details>
-          </div>
-        </div>
+      <button id="btnLimpiar" class="btn-clear" onclick="limpiar()">
+        🧹 Limpiar
+      </button>
 
-        <div>
-          <div class="tarjeta">
-            <h2>➕ Registrar gasto (se suma)</h2>
-            <p style="font-size:12px;color:var(--texto-suave);margin-top:-6px;">Cada categoría marcada se SUMA a lo que ya tenía la OS — no lo reemplaza.</p>
-
-            <label class="campo" for="gastoLoteOS">OS interna *</label>
-            <input type="text" id="gastoLoteOS" list="listaOSDisponibles" required>
-
-            <div class="checklist-gastos" id="checklistNuevoGasto" style="margin-top:10px;"></div>
-
-            <label class="campo" for="gastoLegalizacion">Link de legalización (Drive)</label>
-            <input type="text" id="gastoLegalizacion" placeholder="https://drive.google.com/...">
-
-            <div class="btn-fila">
-              <button class="btn" id="btnGuardarGastosLote" type="button">Guardar gastos</button>
-            </div>
-          </div>
-
-          <div class="tarjeta">
-            <h2>💵 Agregar anticipo (se suma)</h2>
-            <label class="campo" for="anticipoOS">OS interna *</label>
-            <input type="text" id="anticipoOS" list="listaOSDisponibles" required>
-
-            <label class="campo" for="anticipoValor">Valor *</label>
-            <input type="number" id="anticipoValor" min="1" step="1">
-
-            <label class="campo" for="anticipoFecha">Fecha *</label>
-            <input type="date" id="anticipoFecha">
-
-            <div class="btn-fila">
-              <button class="btn" id="btnAgregarAnticipo" type="button">Agregar anticipo</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
     </div>
 
-    <!-- ================= TAB 3: CONSULTAR OPERACIÓN ================= -->
-    <div class="panel-tab" id="tab-consulta">
-      <div class="tarjeta">
-        <h2>🔎 Consultar Operación</h2>
-        <div class="fila-busqueda">
-          <input type="text" id="consultaOSInput" placeholder="Escribe la OS interna a consultar...">
-          <button class="btn" id="btnConsultarOS" type="button">Consultar</button>
-        </div>
+
+    <!-- ESTADO -->
+
+    <div id="status">
+      <div class="spinner"></div>
+      <span id="statusText">Procesando información...</span>
+    </div>
+
+
+    <!-- FILTROS RÁPIDOS -->
+
+    <div class="filtros-rapidos">
+
+      <button class="btn-filtro filtro-facturado" id="btnFiltroFacturado" onclick="alternarFiltro('facturado')">
+        🧾 Solo facturadas
+      </button>
+
+      <button class="btn-filtro filtro-legalizado" id="btnFiltroLegalizado" onclick="alternarFiltro('legalizado')">
+        ✅ Solo legalizadas
+      </button>
+
+    </div>
+
+    <div class="leyenda-colores">
+      <span><span class="leyenda-punto" style="background: var(--success);"></span> Franja verde = legalizada</span>
+      <span><span class="leyenda-punto" style="background: var(--primary);"></span> Franja azul = facturada (sin legalizar aún)</span>
+    </div>
+
+
+    <!-- BUSCADOR -->
+
+    <div class="search-container">
+
+      <input
+        type="text"
+        id="busqueda"
+        placeholder="🔎 Buscar por OS, placa, ruta o conductor..."
+        onkeydown="buscarConEnter(event)"
+        oninput="buscarConDebounce()"
+      >
+
+      <button class="btn-search" onclick="ejecutarBusqueda()">
+        🔎 Buscar
+      </button>
+
+    </div>
+
+    <div class="search-hint">
+      Escribe para filtrar en vivo, o presiona Enter / el botón Buscar. Al hacer clic en una fila, la OS también queda lista para consultar su resumen en la pestaña "Gastos por conductor".
+    </div>
+
+
+    <!-- TABLA -->
+
+    <div class="table-container">
+
+      <div class="table-scroll">
+
+        <table id="tablaOperaciones">
+
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>OS</th>
+              <th>Facturación</th>
+              <th>Estado</th>
+              <th>Placa</th>
+              <th>Ruta</th>
+              <th>Carga</th>
+              <th>Cliente</th>
+              <th>Conductor</th>
+              <th>Manifiesto / Remesa</th>
+              <th>Legalizado</th>
+            </tr>
+          </thead>
+
+          <tbody id="cuerpoTabla"></tbody>
+
+        </table>
+
       </div>
 
-      <div id="resultadoConsulta">
-        <div class="mensaje-vacio">Escribe una OS y presiona "Consultar" para ver toda su información en un solo lugar.</div>
+    </div>
+
+    <div class="contador" id="contadorResultados"></div>
+
+  </div>
+
+
+  <!-- ===================================================== -->
+  <!-- PESTAÑA 2: GASTOS POR CONDUCTOR (nueva)                 -->
+  <!-- ===================================================== -->
+
+  <div class="tab-panel" id="panelGastos">
+
+
+    <div class="grid-form">
+
+
+      <div class="form-group wide">
+        <label>OS INTERNA</label>
+        <input
+          type="text"
+          id="gastoOs"
+          list="listaOsGastos"
+          placeholder="Ej: JF-205"
+          onchange="consultarResumenOS()"
+        >
+        <datalist id="listaOsGastos"></datalist>
       </div>
+
+
+      <div class="form-group wide">
+        <label>ADJUNTAR LEGALIZACIÓN (link de Drive del soporte)</label>
+        <input type="text" id="gastoLegalizacion" placeholder="https://drive.google.com/...">
+      </div>
+
+
+    </div>
+
+
+    <label style="font-size:0.82rem; font-weight:600; color:#64748b; margin-bottom:8px; display:block;">
+      MARCA LOS TIPOS DE GASTO Y ESCRIBE EL VALOR A SUMAR DE CADA UNO
+    </label>
+
+    <div class="gastos-checklist" id="gastosChecklist">
+      <!-- Las casillas se generan por JavaScript (ver GASTOS_TIPOS_RESPALDO) -->
+    </div>
+
+
+    <!-- BOTONES -->
+
+    <div class="btn-group">
+
+      <button id="btnGuardarGasto" class="btn-save" onclick="registrarGasto()">
+        💾 Registrar gasto(s)
+      </button>
+
+      <button id="btnLimpiarGasto" class="btn-clear" onclick="limpiarGasto()">
+        🧹 Limpiar
+      </button>
+
+    </div>
+
+
+    <!-- ESTADO -->
+
+    <div id="statusGasto">
+      <div class="spinner"></div>
+      <span id="statusGastoText">Procesando información...</span>
+    </div>
+
+
+    <!-- ANTICIPOS -->
+
+    <div class="search-hint" style="margin-top: 30px;">
+      Registrar un anticipo (valor + fecha) para la OS de arriba — se guarda en la primera de las 3 casillas de anticipo que esté libre:
+    </div>
+
+    <div class="anticipo-form">
+
+      <div class="form-group" style="margin:0;">
+        <label>VALOR ANTICIPO</label>
+        <input type="number" id="anticipoValor" placeholder="Ej: 500000" min="0" step="1">
+      </div>
+
+      <div class="form-group" style="margin:0;">
+        <label>FECHA ANTICIPO</label>
+        <input type="date" id="anticipoFecha">
+      </div>
+
+      <button class="btn-anticipo" onclick="registrarAnticipo()">
+        💰 Agregar anticipo
+      </button>
+
+    </div>
+
+
+    <!-- RESUMEN DE LA OS -->
+
+    <div class="search-hint">
+      Resumen de la operación (se actualiza al escribir/seleccionar la OS, o después de guardar):
+    </div>
+
+    <div class="resumen-os" id="resumenOS">
+
+      <div class="resumen-item">
+        <span class="label-mini">Conductor</span>
+        <span class="valor-mini" id="resConductor">—</span>
+      </div>
+
+      <div class="resumen-item">
+        <span class="label-mini">Placa</span>
+        <span class="valor-mini" id="resPlaca">—</span>
+      </div>
+
+      <div class="resumen-item">
+        <span class="label-mini">Total gastos</span>
+        <span class="valor-mini" id="resGastos">—</span>
+      </div>
+
+      <div class="resumen-item">
+        <span class="label-mini">Total anticipos</span>
+        <span class="valor-mini" id="resAnticipos">—</span>
+      </div>
+
+      <div class="resumen-item">
+        <span class="label-mini">Diferencia</span>
+        <span class="valor-mini" id="resDiferencia">—</span>
+      </div>
+
+      <div class="resumen-item">
+        <span class="label-mini">Legalización</span>
+        <span class="valor-mini" id="resLegalizacion">—</span>
+      </div>
+
+      <div class="resumen-item">
+        <span class="label-mini">Estado general</span>
+        <span class="valor-mini" id="resEstado">—</span>
+      </div>
+
+      <div class="resumen-item" style="grid-column: span 4;">
+        <span class="label-mini">Desglose por categoría</span>
+        <table class="resumen-tabla" id="resTablaCategorias"></table>
+      </div>
+
+      <div class="resumen-item" style="grid-column: span 4;">
+        <span class="label-mini">Anticipos registrados</span>
+        <table class="resumen-tabla" id="resTablaAnticipos"></table>
+      </div>
+
+      <div class="resumen-item" style="grid-column: span 4; text-align:right;">
+        <button class="btn-editar-gastos" id="btnEditarGastos" onclick="abrirEdicionGastos()">
+          ✏️ Editar gastos y anticipos de esta OS
+        </button>
+      </div>
+
+    </div>
+
+
+    <!-- EDICIÓN DE GASTOS/ANTICIPOS YA GUARDADOS (sobrescribe, no suma) -->
+
+    <div class="edicion-gastos" id="edicionGastos" style="display:none;">
+
+      <div class="search-hint">
+        Editando <strong id="edicionOSLabel"></strong>. Estos valores <strong>reemplazan</strong>
+        lo que ya estaba guardado (no se suman). Deja en blanco lo que no quieras tocar.
+      </div>
+
+      <div class="edicion-grid" id="edicionCategoriasGrid"></div>
+
+      <div class="edicion-grid edicion-grid-anticipos" id="edicionAnticiposGrid"></div>
+
+      <div class="form-actions" style="margin-top:12px;">
+        <button class="btn-guardar" onclick="guardarEdicionGastos()">
+          💾 Guardar cambios
+        </button>
+        <button class="btn-cancelar" onclick="cerrarEdicionGastos()">
+          Cancelar
+        </button>
+      </div>
+
     </div>
 
   </div>
+
+
+  <!-- ===================================================== -->
+  <!-- PESTAÑA 3: CONSULTAR OPERACIÓN (nueva, solo lectura)    -->
+  <!-- ===================================================== -->
+
+  <div class="tab-panel" id="panelConsulta">
+
+    <div class="search-container">
+
+      <input
+        type="text"
+        id="consultaOs"
+        placeholder="🔎 Escribe la OS interna a consultar..."
+        onkeydown="if (event.key === 'Enter') { event.preventDefault(); consultarOperacionCompletaUI(); }"
+      >
+
+      <button class="btn-search" onclick="consultarOperacionCompletaUI()">
+        🔎 Consultar
+      </button>
+
+    </div>
+
+    <div class="search-hint">
+      Vista de solo lectura: agrupa conductor, viaje, documentos (con acceso directo al PDF) y gastos/legalización de una misma OS, respetando el modo activo (JF / Llano). Nunca crea filas nuevas en "Gastos_Conductores".
+    </div>
+
+    <div id="resultadoConsulta"></div>
+
+  </div>
+
+
 </div>
 
-<div id="overlay-carga"><div class="spinner"></div></div>
-<div id="toasts"></div>
 
 <script>
 
-  // =========================================================
-  // ESTADO GLOBAL
-  // =========================================================
-  let modoActual = 'JF';
-  let configuracionModos = [];
-  let ultimaTablaOperaciones = [];
-  let osEnEdicionGastos = null;
 
-  const GASTOS_CATEGORIAS_UI = [
-    'Combustible', '% Conductor', 'Parqueadero', 'Mantenimiento / Imprevistos',
-    'Peajes', 'Engrase', 'Lavado', 'Otros'
-  ];
+let debounceTimer = null;
 
-  document.addEventListener('DOMContentLoaded', inicializar);
+// Debe coincidir EXACTO con GASTOS_TIPOS_VALIDOS en Code.gs.
+// Se usa como respaldo si por algún motivo obtenerListasGastos()
+// no responde a tiempo, y para construir las casillas de inmediato
+// sin esperar al servidor.
+const GASTOS_TIPOS_RESPALDO = [
+  'Combustible', '% Conductor', 'Parqueadero', 'Mantenimiento / Imprevistos',
+  'Peajes', 'Engrase', 'Lavado', 'Otros'
+];
 
-  function inicializar() {
+// Último dataset traído del servidor (todas las filas, sin filtrar) y
+// estado de los filtros rápidos de la pestaña Operaciones.
+let ultimosDatosOperaciones = [];
+let filtroFacturado = false;
+let filtroLegalizado = false;
 
-    document.querySelectorAll('.tab-btn').forEach(function(boton) {
-      boton.addEventListener('click', function() { cambiarTab(boton.dataset.tab); });
-    });
+// Modo activo (JF / LLANO) y catálogo de modos traído del servidor —
+// determina sobre qué hoja de operaciones se lee/escribe todo el panel.
+let modoActual = 'JF';
+let configuracionModos = [];
 
-    document.getElementById('selectModo').addEventListener('change', function(e) {
-      cambiarModo(e.target.value);
-    });
 
-    document.getElementById('formOperacion').addEventListener('submit', function(e) {
-      e.preventDefault();
-      guardarOperacionDesdeForm();
-    });
-    document.getElementById('btnLimpiarFormOperacion').addEventListener('click', limpiarFormOperacion);
-    document.getElementById('btnLimpiarBusqueda').addEventListener('click', function() {
-      document.getElementById('buscarOperacionesInput').value = '';
-      cargarOperaciones('');
-    });
+/**
+ * =========================================================
+ * AL CARGAR
+ * =========================================================
+ */
+window.onload = function() {
 
-    let temporizadorBusqueda = null;
-    document.getElementById('buscarOperacionesInput').addEventListener('input', function(e) {
-      clearTimeout(temporizadorBusqueda);
-      const valor = e.target.value;
-      temporizadorBusqueda = setTimeout(function() { cargarOperaciones(valor); }, 350);
-    });
+  establecerFecha();
+  construirChecklistGastos(GASTOS_TIPOS_RESPALDO);
+  cargarConfiguracionModos();
 
-    document.getElementById('filtroFacturado').addEventListener('change', renderTablaOperaciones);
-    document.getElementById('filtroLegalizado').addEventListener('change', renderTablaOperaciones);
+};
 
-    document.getElementById('btnBuscarResumen').addEventListener('click', function() {
-      const os = document.getElementById('gastosOSInput').value;
-      buscarResumenGastos(os);
-    });
-    document.getElementById('gastosOSInput').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); buscarResumenGastos(e.target.value); }
-    });
 
-    document.getElementById('btnGuardarGastosLote').addEventListener('click', guardarGastosLoteDesdeForm);
-    document.getElementById('btnAgregarAnticipo').addEventListener('click', agregarAnticipoDesdeForm);
-    document.getElementById('btnGuardarEdicionGastos').addEventListener('click', guardarEdicionGastosDesdeForm);
+/**
+ * =========================================================
+ * MODO ACTIVO (JF / LLANO)
+ * =========================================================
+ * El modo determina sobre qué hoja de operaciones ('operaciones' o
+ * 'Control_llano') se lee/escribe todo el panel. Se resuelve una sola
+ * vez al abrir (contra obtenerConfiguracionModos(), que trae las
+ * etiquetas y el prefijo de OS desde Code.gs) y se vuelve a aplicar
+ * cada vez que el usuario cambia el selector de modo.
+ */
+function cargarConfiguracionModos() {
 
-    document.getElementById('btnConsultarOS').addEventListener('click', function() {
-      consultarOperacion(document.getElementById('consultaOSInput').value);
-    });
-    document.getElementById('consultaOSInput').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); consultarOperacion(e.target.value); }
-    });
+  google.script.run
 
-    construirChecklistGasto('checklistNuevoGasto');
+    .withSuccessHandler(function(modos) {
 
-    cargarConfiguracionInicial();
-  }
-
-  function cargarConfiguracionInicial() {
-    llamarServidor('obtenerConfiguracionModos').then(function(modos) {
       configuracionModos = modos || [];
-      const select = document.getElementById('selectModo');
-      select.innerHTML = configuracionModos.map(function(m) {
-        return '<option value="' + escapeHtml(m.clave) + '">' + escapeHtml(m.etiqueta) + '</option>';
-      }).join('');
+
       if (configuracionModos.length) {
+
+        const select = document.getElementById('modoActivo');
+        select.innerHTML = configuracionModos.map(function(m) {
+          return '<option value="' + m.clave + '">' + escapeHTML(m.etiqueta) + '</option>';
+        }).join('');
+
         modoActual = configuracionModos[0].clave;
         select.value = modoActual;
+
       }
-      cargarTodoElModo();
-    });
-  }
 
-  // =========================================================
-  // NAVEGACIÓN DE PESTAÑAS Y MODO
-  // =========================================================
-  function cambiarTab(idTab) {
-    document.querySelectorAll('.tab-btn').forEach(function(b) {
-      b.classList.toggle('activo', b.dataset.tab === idTab);
-    });
-    document.querySelectorAll('.panel-tab').forEach(function(p) {
-      p.classList.toggle('activo', p.id === idTab);
-    });
-  }
+      actualizarPlaceholderOS();
 
-  function cambiarModo(nuevoModo) {
-    modoActual = nuevoModo;
-    limpiarFormOperacion();
-    document.getElementById('resumenGastosContenedor').innerHTML =
-      '<div class="mensaje-vacio">Escribe una OS y presiona "Buscar" para ver su resumen de gastos.</div>';
-    document.getElementById('tarjetaEditarGastos').style.display = 'none';
-    document.getElementById('resultadoConsulta').innerHTML =
-      '<div class="mensaje-vacio">Escribe una OS y presiona "Consultar" para ver toda su información en un solo lugar.</div>';
-    cargarTodoElModo();
-    mostrarToast('Modo cambiado a ' + etiquetaDeModo(modoActual) + '.', 'info');
-  }
-
-  function etiquetaDeModo(clave) {
-    const encontrado = configuracionModos.filter(function(m) { return m.clave === clave; })[0];
-    return encontrado ? encontrado.etiqueta : clave;
-  }
-
-  function prefijoDeModo(clave) {
-    const encontrado = configuracionModos.filter(function(m) { return m.clave === clave; })[0];
-    return encontrado ? encontrado.prefijoOS : '';
-  }
-
-  function cargarTodoElModo() {
-    cargarOperaciones('');
-    cargarListasOperacion();
-    cargarListasGastos();
-    const prefijo = prefijoDeModo(modoActual);
-    document.getElementById('campoOS').placeholder = prefijo ? ('Ej: ' + prefijo + '123') : 'OS interna';
-  }
-
-  // =========================================================
-  // TAB OPERACIONES
-  // =========================================================
-  function cargarOperaciones(texto) {
-    llamarServidor('buscarOperaciones', texto || '', modoActual).then(function(filas) {
-      ultimaTablaOperaciones = filas || [];
-      renderTablaOperaciones();
-    });
-  }
-
-  function renderTablaOperaciones() {
-    const soloFacturadas = document.getElementById('filtroFacturado').checked;
-    const soloLegalizadas = document.getElementById('filtroLegalizado').checked;
-
-    const filas = ultimaTablaOperaciones.filter(function(fila) {
-      const estadoFacturacion = (fila[2] || '').toString().toUpperCase();
-      const estadoGastos = (fila[23] || '').toString().toUpperCase();
-      if (soloFacturadas && estadoFacturacion.indexOf('FACTURAD') === -1) return false;
-      if (soloLegalizadas && estadoGastos !== 'COMPLETO') return false;
-      return true;
-    });
-
-    const cuerpo = document.getElementById('cuerpoTablaOperaciones');
-
-    if (!filas.length) {
-      cuerpo.innerHTML = '<tr><td colspan="9" class="mensaje-vacio">No hay operaciones para mostrar.</td></tr>';
-      return;
-    }
-
-    cuerpo.innerHTML = filas.map(function(fila) {
-      const os = fila[1] || '';
-      const estadoGastos = (fila[23] || '').toString();
-      const badgeGastos = estadoGastos
-        ? '<span class="badge ' + (estadoGastos.toUpperCase() === 'COMPLETO' ? 'badge-ok' : 'badge-pendiente') + '">' + escapeHtml(estadoGastos) + '</span>'
-        : '<span class="badge badge-neutro">SIN DATOS</span>';
-
-      return '<tr>' +
-        '<td>' + escapeHtml(fila[0]) + '</td>' +
-        '<td><strong>' + escapeHtml(os) + '</strong></td>' +
-        '<td>' + escapeHtml(fila[2]) + '</td>' +
-        '<td>' + escapeHtml(fila[3]) + '</td>' +
-        '<td>' + escapeHtml(fila[4]) + '</td>' +
-        '<td>' + escapeHtml(fila[5]) + '</td>' +
-        '<td>' + escapeHtml(fila[8]) + '</td>' +
-        '<td>' + badgeGastos + '</td>' +
-        '<td><button class="btn btn-pequeno btn-secundario" onclick="cargarOperacionEnForm(\'' + escapeAtributo(os) + '\')">Editar</button> ' +
-        '<button class="btn btn-pequeno btn-fantasma" onclick="irAConsultar(\'' + escapeAtributo(os) + '\')">Consultar</button></td>' +
-        '</tr>';
-    }).join('');
-  }
-
-  function cargarOperacionEnForm(os) {
-    const fila = ultimaTablaOperaciones.filter(function(f) { return (f[1] || '').toString() === os; })[0];
-    if (!fila) return;
-
-    document.getElementById('tituloFormOperacion').textContent = '✏️ Editar operación ' + os;
-    document.getElementById('campoFecha').value = fila[0] || '';
-    document.getElementById('campoOS').value = fila[1] || '';
-    document.getElementById('campoEstadoFacturacion').value = fila[2] || '';
-    document.getElementById('campoEstadoOperacion').value = fila[3] || '';
-    document.getElementById('campoPlaca').value = fila[4] || '';
-    document.getElementById('campoRuta').value = fila[5] || '';
-    document.getElementById('campoCarga').value = fila[6] || '';
-    document.getElementById('campoCliente').value = fila[7] || '';
-    document.getElementById('campoConductor').value = fila[8] || '';
-    document.getElementById('campoManifiesto').value = fila[9] || '';
-
-    cambiarTab('tab-operaciones');
-    window.scrollTo(0, 0);
-  }
-
-  function irAConsultar(os) {
-    document.getElementById('consultaOSInput').value = os;
-    cambiarTab('tab-consulta');
-    consultarOperacion(os);
-  }
-
-  function limpiarFormOperacion() {
-    document.getElementById('tituloFormOperacion').textContent = '➕ Nueva operación';
-    document.getElementById('formOperacion').reset();
-  }
-
-  function guardarOperacionDesdeForm() {
-    const operacion = {
-      modo: modoActual,
-      fecha: document.getElementById('campoFecha').value,
-      os: document.getElementById('campoOS').value,
-      estadoFacturacion: document.getElementById('campoEstadoFacturacion').value,
-      estadoOperacion: document.getElementById('campoEstadoOperacion').value,
-      placa: document.getElementById('campoPlaca').value,
-      ruta: document.getElementById('campoRuta').value,
-      carga: document.getElementById('campoCarga').value,
-      cliente: document.getElementById('campoCliente').value,
-      conductor: document.getElementById('campoConductor').value,
-      manifiesto: document.getElementById('campoManifiesto').value
-    };
-
-    document.getElementById('btnGuardarOperacion').disabled = true;
-
-    llamarServidor('guardarOperacion', operacion).then(function(resultado) {
-      document.getElementById('btnGuardarOperacion').disabled = false;
-      mostrarToast(resultado.mensaje, 'exito');
-      limpiarFormOperacion();
-      cargarOperaciones(document.getElementById('buscarOperacionesInput').value);
-      cargarListasOperacion();
-    }).catch(function() {
-      document.getElementById('btnGuardarOperacion').disabled = false;
-    });
-  }
-
-  function cargarListasOperacion() {
-    llamarServidor('obtenerListas', modoActual).then(function(listas) {
-      llenarDatalist('listaEstadosFacturacion', listas.estadosFacturacion);
-      llenarDatalist('listaEstadosOperacion', listas.estadosOperacion);
-      llenarDatalist('listaPlacas', listas.placas);
-      llenarDatalist('listaRutas', listas.rutas);
-      llenarDatalist('listaCargas', listas.cargas);
-      llenarDatalist('listaClientes', listas.clientes);
-      llenarDatalist('listaConductores', listas.conductores);
-    });
-  }
-
-  function llenarDatalist(idDatalist, valores) {
-    document.getElementById(idDatalist).innerHTML =
-      (valores || []).map(function(v) { return '<option value="' + escapeAtributo(v) + '">'; }).join('');
-  }
-
-  // =========================================================
-  // TAB GASTOS POR CONDUCTOR
-  // =========================================================
-  function cargarListasGastos() {
-    llamarServidor('obtenerListasGastos', modoActual).then(function(listas) {
-      llenarDatalist('listaOSDisponibles', listas.osDisponibles);
-    });
-  }
-
-  function construirChecklistGasto(idContenedor) {
-    document.getElementById(idContenedor).innerHTML = GASTOS_CATEGORIAS_UI.map(function(tipo, i) {
-      const id = idContenedor + '_' + i;
-      return '<div class="fila-gasto">' +
-        '<input type="checkbox" id="' + id + '_chk" data-tipo="' + escapeAtributo(tipo) + '">' +
-        '<span>' + escapeHtml(tipo) + '</span>' +
-        '<input type="number" id="' + id + '_val" min="0" step="1" placeholder="Valor">' +
-        '</div>';
-    }).join('');
-  }
-
-  function leerChecklistGasto(idContenedor) {
-    const items = [];
-    GASTOS_CATEGORIAS_UI.forEach(function(tipo, i) {
-      const id = idContenedor + '_' + i;
-      const marcado = document.getElementById(id + '_chk').checked;
-      const valor = Number(document.getElementById(id + '_val').value);
-      if (marcado && valor > 0) {
-        items.push({ tipo: tipo, valor: valor });
-      }
-    });
-    return items;
-  }
-
-  function buscarResumenGastos(os) {
-    const texto = (os || '').toString().trim();
-    if (!texto) {
-      mostrarToast('Escribe una OS para ver su resumen.', 'error');
-      return;
-    }
-    llamarServidor('obtenerResumenOS', texto, modoActual).then(function(resumen) {
-      renderResumenGastos(resumen);
-      prepararEdicionGastos(resumen);
-    });
-  }
-
-  function renderResumenGastos(resumen) {
-    const cont = document.getElementById('resumenGastosContenedor');
-
-    const filasCategorias = resumen.categorias.map(function(c) {
-      return '<tr><td>' + escapeHtml(c.tipo) + '</td><td>' + formatoMoneda(c.valor) + '</td></tr>';
-    }).join('');
-
-    const filasAnticipos = resumen.anticipos.length
-      ? resumen.anticipos.map(function(a) {
-          return '<tr><td>Anticipo (' + escapeHtml(a.fecha) + ')</td><td>' + formatoMoneda(a.valor) + '</td></tr>';
-        }).join('')
-      : '<tr><td colspan="2" style="color:var(--texto-suave);">Sin anticipos registrados.</td></tr>';
-
-    const badgeEstado = resumen.estado
-      ? '<span class="badge ' + (resumen.estado.toString().toUpperCase() === 'COMPLETO' ? 'badge-ok' : 'badge-pendiente') + '">' + escapeHtml(resumen.estado) + '</span>'
-      : '<span class="badge badge-neutro">SIN ESTADO</span>';
-
-    cont.innerHTML =
-      '<div class="campo-lectura"><span class="etq">OS</span><div class="val"><strong>' + escapeHtml(resumen.os) + '</strong> — ' + escapeHtml(resumen.conductor || 'Sin conductor asignado') + ' (' + escapeHtml(resumen.placa || '—') + ')</div></div>' +
-      '<h3 style="margin-top:14px;">Gastos por categoría</h3>' +
-      '<table class="tabla-resumen"><tbody>' + filasCategorias + '</tbody></table>' +
-      '<h3 style="margin-top:14px;">Anticipos</h3>' +
-      '<table class="tabla-resumen"><tbody>' + filasAnticipos + '</tbody></table>' +
-      '<div class="totales-resumen">' +
-        '<div class="linea"><span>Total gastos</span><span>' + formatoMoneda(resumen.totalGastos) + '</span></div>' +
-        '<div class="linea"><span>Total anticipos</span><span>' + formatoMoneda(resumen.totalAnticipos) + '</span></div>' +
-        '<div class="linea total"><span>Diferencia</span><span>' + formatoMoneda(resumen.diferencia) + '</span></div>' +
-      '</div>' +
-      '<div class="fila-doc" style="margin-top:12px;">' +
-        '<span class="nombre-doc">📎 Legalización</span>' + badgeDocumento(resumen.legalizacion) +
-      '</div>' +
-      '<div class="fila-doc"><span class="nombre-doc">Estado general</span>' + badgeEstado + '</div>';
-
-    document.getElementById('tarjetaEditarGastos').style.display = 'block';
-  }
-
-  function prepararEdicionGastos(resumen) {
-    osEnEdicionGastos = resumen.os;
-
-    document.getElementById('checklistEditarGastos').innerHTML = resumen.categorias.map(function(c, i) {
-      const id = 'editarGasto_' + i;
-      return '<div class="fila-gasto" style="grid-template-columns:1fr 130px;">' +
-        '<span>' + escapeHtml(c.tipo) + '</span>' +
-        '<input type="number" id="' + id + '" min="0" step="1" data-tipo="' + escapeAtributo(c.tipo) + '" value="' + c.valor + '">' +
-        '</div>';
-    }).join('');
-
-    const slots = resumen.anticiposSlots || [];
-    document.getElementById('slotsEditarAnticipos').innerHTML = slots.map(function(a, i) {
-      return '<div class="anticipo-slot">' +
-        '<div><label class="campo">Anticipo ' + (i + 1) + ' - Valor</label>' +
-        '<input type="number" id="editarAnticipoValor_' + i + '" min="0" step="1" value="' + (a.valor || '') + '"></div>' +
-        '<div><label class="campo">Anticipo ' + (i + 1) + ' - Fecha</label>' +
-        '<input type="date" id="editarAnticipoFecha_' + i + '" value="' + (a.fecha || '') + '"></div>' +
-        '</div>';
-    }).join('');
-  }
-
-  function guardarGastosLoteDesdeForm() {
-    const os = document.getElementById('gastoLoteOS').value;
-    const items = leerChecklistGasto('checklistNuevoGasto');
-
-    if (!os) { mostrarToast('Escribe la OS interna.', 'error'); return; }
-    if (!items.length) { mostrarToast('Marca al menos un tipo de gasto con un valor mayor a cero.', 'error'); return; }
-
-    const payload = {
-      modo: modoActual,
-      os: os,
-      items: items,
-      legalizacion: document.getElementById('gastoLegalizacion').value
-    };
-
-    llamarServidor('guardarGastosLote', payload).then(function(resultado) {
-      mostrarToast(resultado.mensaje, 'exito');
-      document.getElementById('checklistNuevoGasto').querySelectorAll('input').forEach(function(inp) {
-        if (inp.type === 'checkbox') inp.checked = false; else inp.value = '';
-      });
-      document.getElementById('gastoLegalizacion').value = '';
-      document.getElementById('gastosOSInput').value = os;
-      renderResumenGastos(resultado.resumen);
-      prepararEdicionGastos(resultado.resumen);
-      cargarOperaciones(document.getElementById('buscarOperacionesInput').value);
+      cargarListas();
+      cargarLista();
       cargarListasGastos();
-    });
+
+    })
+
+    .withFailureHandler(function(error) {
+
+      mostrarToast('❌ Error cargando los modos disponibles: ' + error.message, 'error');
+
+      // El panel sigue siendo usable en el modo por defecto (JF) aunque
+      // esta llamada falle — no dejamos las demás listas sin cargar.
+      cargarListas();
+      cargarLista();
+      cargarListasGastos();
+
+    })
+
+    .obtenerConfiguracionModos();
+
+}
+
+
+function cambiarModo(nuevoModo) {
+
+  modoActual = nuevoModo;
+
+  limpiar();
+  limpiarGasto();
+
+  document.getElementById('busqueda').value = '';
+  filtroFacturado = false;
+  filtroLegalizado = false;
+  document.getElementById('btnFiltroFacturado').classList.remove('activo');
+  document.getElementById('btnFiltroLegalizado').classList.remove('activo');
+
+  document.getElementById('consultaOs').value = '';
+  document.getElementById('resultadoConsulta').innerHTML = '';
+
+  actualizarPlaceholderOS();
+
+  cargarListas();
+  cargarLista();
+  cargarListasGastos();
+
+  mostrarToast('Modo cambiado a ' + etiquetaDeModo(modoActual) + '.', 'info');
+
+}
+
+
+function etiquetaDeModo(clave) {
+
+  const encontrado = configuracionModos.filter(function(m) { return m.clave === clave; })[0];
+
+  return encontrado ? encontrado.etiqueta : clave;
+
+}
+
+
+function prefijoDeModo(clave) {
+
+  const encontrado = configuracionModos.filter(function(m) { return m.clave === clave; })[0];
+
+  return encontrado ? encontrado.prefijoOS : '';
+
+}
+
+
+function actualizarPlaceholderOS() {
+
+  const prefijo = prefijoDeModo(modoActual);
+
+  document.getElementById('os').placeholder = prefijo ? ('Ej: ' + prefijo + '123') : 'Ej: JF-205';
+
+}
+
+
+/**
+ * =========================================================
+ * PESTAÑAS
+ * =========================================================
+ */
+function cambiarTab(nombre) {
+
+  const paneles = { operaciones: 'panelOperaciones', gastos: 'panelGastos', consulta: 'panelConsulta' };
+  const botones = { operaciones: 'tabBtnOperaciones', gastos: 'tabBtnGastos', consulta: 'tabBtnConsulta' };
+
+  Object.keys(paneles).forEach(function(clave) {
+    document.getElementById(paneles[clave]).classList.toggle('activa', clave === nombre);
+    document.getElementById(botones[clave]).classList.toggle('activa', clave === nombre);
+  });
+
+}
+
+
+/**
+ * =========================================================
+ * TOASTS (reemplazan los alert() bloqueantes)
+ * =========================================================
+ */
+function mostrarToast(mensaje, tipo) {
+
+  const contenedor = document.getElementById('toastContainer');
+
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + (tipo || 'info');
+  toast.textContent = mensaje;
+
+  contenedor.appendChild(toast);
+
+  requestAnimationFrame(function() {
+    toast.classList.add('show');
+  });
+
+  setTimeout(function() {
+    toast.classList.remove('show');
+    setTimeout(function() {
+      toast.remove();
+    }, 300);
+  }, 3500);
+
+}
+
+
+/**
+ * =========================================================
+ * FECHA ACTUAL
+ * =========================================================
+ */
+function establecerFecha() {
+
+  const fecha = new Date();
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, '0');
+  const day = String(fecha.getDate()).padStart(2, '0');
+  const hoy = year + '-' + month + '-' + day;
+
+  document.getElementById('fecha').value = hoy;
+
+  const campoAnticipoFecha = document.getElementById('anticipoFecha');
+  if (campoAnticipoFecha) {
+    campoAnticipoFecha.value = hoy;
   }
 
-  function agregarAnticipoDesdeForm() {
-    const payload = {
-      modo: modoActual,
-      os: document.getElementById('anticipoOS').value,
-      valor: Number(document.getElementById('anticipoValor').value),
-      fecha: document.getElementById('anticipoFecha').value
-    };
+}
 
-    if (!payload.os) { mostrarToast('Escribe la OS interna.', 'error'); return; }
-    if (!payload.valor || payload.valor <= 0) { mostrarToast('El valor del anticipo debe ser mayor a cero.', 'error'); return; }
-    if (!payload.fecha) { mostrarToast('Escribe la fecha del anticipo.', 'error'); return; }
 
-    llamarServidor('agregarAnticipo', payload).then(function(resultado) {
-      mostrarToast(resultado.mensaje, 'exito');
-      document.getElementById('anticipoValor').value = '';
-      document.getElementById('anticipoFecha').value = '';
-      document.getElementById('gastosOSInput').value = payload.os;
-      renderResumenGastos(resultado.resumen);
-      prepararEdicionGastos(resultado.resumen);
-      cargarOperaciones(document.getElementById('buscarOperacionesInput').value);
-    });
+/**
+ * =========================================================
+ * CARGAR LISTAS (pestaña Operaciones)
+ * =========================================================
+ */
+function cargarListas() {
+
+  google.script.run
+
+    .withSuccessHandler(function(listas) {
+
+      llenarSelect('estadoFacturacion', listas.estadosFacturacion);
+      llenarSelect('estadoOperacion', listas.estadosOperacion);
+      llenarSelect('placa', listas.placas);
+      llenarSelect('ruta', listas.rutas);
+      llenarSelect('carga', listas.cargas);
+      llenarSelect('cliente', listas.clientes);
+      llenarSelect('conductor', listas.conductores);
+
+    })
+
+    .withFailureHandler(function(error) {
+      mostrarToast('❌ Error cargando listas: ' + error.message, 'error');
+    })
+
+    .obtenerListas(modoActual);
+
+}
+
+
+/**
+ * =========================================================
+ * LLENAR SELECT
+ * =========================================================
+ */
+function llenarSelect(id, opciones) {
+
+  const select = document.getElementById(id);
+  const valorActual = select.value;
+
+  select.innerHTML = '<option value="">Seleccione...</option>';
+
+  if (!opciones) {
+    return;
   }
 
-  function guardarEdicionGastosDesdeForm() {
-    if (!osEnEdicionGastos) { mostrarToast('Primero busca el resumen de una OS.', 'error'); return; }
+  opciones.forEach(function(opcion) {
+    const option = document.createElement('option');
+    option.value = opcion;
+    option.textContent = opcion;
+    select.appendChild(option);
+  });
 
-    const categorias = [];
-    document.querySelectorAll('#checklistEditarGastos input').forEach(function(inp) {
-      categorias.push({ tipo: inp.dataset.tipo, valor: Number(inp.value) || 0 });
-    });
+  if (valorActual) {
+    select.value = valorActual;
+  }
 
-    const anticipos = [];
-    for (let i = 0; i < 3; i++) {
-      const valorEl = document.getElementById('editarAnticipoValor_' + i);
-      const fechaEl = document.getElementById('editarAnticipoFecha_' + i);
-      if (!valorEl) continue;
-      anticipos.push({ valor: Number(valorEl.value) || 0, fecha: fechaEl.value || '' });
+}
+
+
+/**
+ * =========================================================
+ * REGISTRAR / ACTUALIZAR (Operaciones)
+ * =========================================================
+ */
+function registrar() {
+
+  const btn = document.getElementById('btnGuardar');
+  const status = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+
+  const operacion = {
+    modo: modoActual,
+    fecha: document.getElementById('fecha').value,
+    os: document.getElementById('os').value.trim(),
+    estadoFacturacion: document.getElementById('estadoFacturacion').value,
+    estadoOperacion: document.getElementById('estadoOperacion').value,
+    placa: document.getElementById('placa').value,
+    conductor: document.getElementById('conductor').value,
+    ruta: document.getElementById('ruta').value,
+    carga: document.getElementById('carga').value,
+    cliente: document.getElementById('cliente').value,
+    manifiesto: document.getElementById('manifiesto').value.trim()
+  };
+
+  if (!operacion.fecha) {
+    mostrarToast('⚠️ La fecha es obligatoria.', 'error');
+    return;
+  }
+
+  if (!operacion.os) {
+    mostrarToast('⚠️ La OS interna es obligatoria.', 'error');
+    document.getElementById('os').focus();
+    return;
+  }
+
+  btn.disabled = true;
+  statusText.textContent = 'Guardando operación...';
+  status.style.display = 'flex';
+
+  google.script.run
+
+    .withSuccessHandler(function(resultado) {
+
+      status.style.display = 'none';
+      btn.disabled = false;
+
+      mostrarToast(resultado.mensaje, 'success');
+
+      cargarLista();
+      cargarListas();
+      cargarListasGastos();
+      limpiar();
+
+      document.getElementById('busqueda').value = operacion.os;
+
+    })
+
+    .withFailureHandler(function(error) {
+
+      status.style.display = 'none';
+      btn.disabled = false;
+
+      mostrarToast('❌ Error guardando operación: ' + error.message, 'error');
+
+    })
+
+    .guardarOperacion(operacion);
+
+}
+
+
+/**
+ * =========================================================
+ * CARGAR TABLA (todas las operaciones)
+ * =========================================================
+ */
+function cargarLista() {
+
+  const cuerpo = document.getElementById('cuerpoTabla');
+  cuerpo.innerHTML = '<tr><td colspan="11" class="empty">Cargando operaciones...</td></tr>';
+
+  google.script.run
+
+    .withSuccessHandler(function(datos) {
+      ultimosDatosOperaciones = datos || [];
+      aplicarFiltrosVisuales();
+    })
+
+    .withFailureHandler(function(error) {
+      cuerpo.innerHTML = '<tr><td colspan="11" class="empty">❌ Error cargando datos.</td></tr>';
+      mostrarToast('❌ Error cargando operaciones: ' + error.message, 'error');
+    })
+
+    .obtenerOperaciones(modoActual);
+
+}
+
+
+/**
+ * =========================================================
+ * BÚSQUEDA CON DEBOUNCE (filtra mientras se escribe)
+ * =========================================================
+ */
+function buscarConDebounce() {
+
+  clearTimeout(debounceTimer);
+
+  debounceTimer = setTimeout(function() {
+    ejecutarBusqueda();
+  }, 350);
+
+}
+
+
+function buscarConEnter(event) {
+
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    clearTimeout(debounceTimer);
+    ejecutarBusqueda();
+  }
+
+}
+
+
+/**
+ * =========================================================
+ * EJECUTAR BÚSQUEDA (OS, placa, ruta o conductor)
+ * =========================================================
+ */
+function ejecutarBusqueda() {
+
+  const texto = document.getElementById('busqueda').value.trim();
+
+  google.script.run
+
+    .withSuccessHandler(function(datos) {
+      ultimosDatosOperaciones = datos || [];
+      aplicarFiltrosVisuales(texto);
+    })
+
+    .withFailureHandler(function(error) {
+      mostrarToast('❌ Error buscando: ' + error.message, 'error');
+    })
+
+    .buscarOperaciones(texto, modoActual);
+
+}
+
+
+/**
+ * =========================================================
+ * FILTROS RÁPIDOS: FACTURADAS / LEGALIZADAS
+ * =========================================================
+ * Filtran en el navegador sobre lo último que trajo el servidor
+ * (cargarLista o ejecutarBusqueda), sin otra llamada — así se
+ * pueden combinar libremente con la búsqueda de texto.
+ */
+function alternarFiltro(tipo) {
+
+  if (tipo === 'facturado') {
+    filtroFacturado = !filtroFacturado;
+    document.getElementById('btnFiltroFacturado').classList.toggle('activo', filtroFacturado);
+  } else {
+    filtroLegalizado = !filtroLegalizado;
+    document.getElementById('btnFiltroLegalizado').classList.toggle('activo', filtroLegalizado);
+  }
+
+  aplicarFiltrosVisuales(document.getElementById('busqueda').value.trim());
+
+}
+
+
+function esFacturada(fila) {
+  return (fila[2] || '').toString().trim().toUpperCase() === 'FACTURADA';
+}
+
+
+function esLegalizada(fila) {
+  return (fila[23] || '').toString().trim().toUpperCase() === 'COMPLETO';
+}
+
+
+function aplicarFiltrosVisuales(textoBusqueda) {
+
+  let datos = ultimosDatosOperaciones;
+
+  if (filtroFacturado) {
+    datos = datos.filter(esFacturada);
+  }
+
+  if (filtroLegalizado) {
+    datos = datos.filter(esLegalizada);
+  }
+
+  renderizarTabla(datos, textoBusqueda);
+
+}
+
+
+/**
+ * =========================================================
+ * RENDERIZAR TABLA
+ * =========================================================
+ */
+function renderizarTabla(datos, textoBusqueda) {
+
+  const cuerpo = document.getElementById('cuerpoTabla');
+  const contador = document.getElementById('contadorResultados');
+
+  cuerpo.innerHTML = '';
+
+  if (!datos || datos.length === 0) {
+
+    const hayFiltrosActivos = filtroFacturado || filtroLegalizado;
+
+    cuerpo.innerHTML = '<tr><td colspan="11" class="empty">' +
+      (textoBusqueda
+        ? 'No se encontraron operaciones que coincidan con "' + escapeHTML(textoBusqueda) + '".'
+        : (hayFiltrosActivos
+          ? 'Ninguna operación cumple los filtros activos.'
+          : 'No hay operaciones registradas.')) +
+      '</td></tr>';
+
+    contador.textContent = '';
+    return;
+
+  }
+
+  datos.forEach(function(fila) {
+
+    const tr = document.createElement('tr');
+
+    const facturada = esFacturada(fila);
+    const legalizada = esLegalizada(fila);
+
+    if (legalizada) {
+      tr.classList.add('fila-legalizada');
+    } else if (facturada) {
+      tr.classList.add('fila-facturada');
     }
 
-    const payload = { modo: modoActual, os: osEnEdicionGastos, categorias: categorias, anticipos: anticipos };
+    tr.onclick = function() {
+      seleccionarFila(fila);
+    };
 
-    llamarServidor('actualizarGastosOS', payload).then(function(resultado) {
-      mostrarToast(resultado.mensaje, 'exito');
-      renderResumenGastos(resultado.resumen);
-      prepararEdicionGastos(resultado.resumen);
-      cargarOperaciones(document.getElementById('buscarOperacionesInput').value);
-    });
+    const estadoGastos = (fila[23] || '').toString().trim();
+    const badgeLegalizado = estadoGastos
+      ? '<span class="badge-mini ' + (legalizada ? 'si' : 'no') + '">' + escapeHTML(estadoGastos) + '</span>'
+      : '<span class="badge-mini no">SIN DATOS</span>';
+
+    tr.innerHTML =
+      '<td>' + formatearFecha(fila[0]) + '</td>' +
+      '<td><strong>' + escapeHTML(fila[1]) + '</strong></td>' +
+      '<td>' + escapeHTML(fila[2]) + '</td>' +
+      '<td>' + escapeHTML(fila[3]) + '</td>' +
+      '<td>' + escapeHTML(fila[4]) + '</td>' +
+      '<td>' + escapeHTML(fila[5]) + '</td>' +
+      '<td>' + escapeHTML(fila[6]) + '</td>' +
+      '<td>' + escapeHTML(fila[7]) + '</td>' +
+      '<td>' + escapeHTML(fila[8]) + '</td>' +
+      '<td>' + escapeHTML(fila[9]) + '</td>' +
+      '<td>' + badgeLegalizado + '</td>';
+
+    cuerpo.appendChild(tr);
+
+  });
+
+  const totalSinFiltrar = ultimosDatosOperaciones.length;
+
+  contador.textContent = datos.length + (datos.length === 1 ? ' resultado' : ' resultados') +
+    ((filtroFacturado || filtroLegalizado) ? ' (de ' + totalSinFiltrar + ' en total)' : '');
+
+}
+
+
+/**
+ * =========================================================
+ * SELECCIONAR FILA (Operaciones)
+ * =========================================================
+ * Además de llenar el formulario de la pestaña Operaciones,
+ * deja la OS lista en la pestaña Gastos por si el usuario
+ * quiere registrar o consultar un gasto de esa misma OS.
+ */
+function seleccionarFila(fila) {
+
+  document.getElementById('fecha').value = convertirFecha(fila[0]);
+  document.getElementById('os').value = fila[1] || '';
+
+  seleccionarValor('estadoFacturacion', fila[2]);
+  seleccionarValor('estadoOperacion', fila[3]);
+  seleccionarValor('placa', fila[4]);
+  seleccionarValor('ruta', fila[5]);
+  seleccionarValor('carga', fila[6]);
+  seleccionarValor('cliente', fila[7]);
+  seleccionarValor('conductor', fila[8]);
+
+  document.getElementById('manifiesto').value = fila[9] || '';
+
+  const campoGastoOs = document.getElementById('gastoOs');
+  if (campoGastoOs) {
+    campoGastoOs.value = fila[1] || '';
   }
 
-  // =========================================================
-  // TAB CONSULTAR OPERACIÓN
-  // =========================================================
-  function consultarOperacion(os) {
-    const texto = (os || '').toString().trim();
-    if (!texto) { mostrarToast('Escribe una OS para consultar.', 'error'); return; }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    llamarServidor('consultarOperacionCompleta', texto, modoActual).then(function(resultado) {
-      renderResultadoConsulta(resultado);
-    });
+}
+
+
+/**
+ * =========================================================
+ * SELECCIONAR VALOR DEL SELECT
+ * =========================================================
+ */
+function seleccionarValor(id, valor) {
+
+  const select = document.getElementById(id);
+  const valorTexto = (valor === null || valor === undefined) ? '' : valor.toString();
+
+  let existe = false;
+
+  for (let i = 0; i < select.options.length; i++) {
+    if (select.options[i].value === valorTexto) {
+      existe = true;
+      break;
+    }
   }
 
-  function renderResultadoConsulta(resultado) {
-    const cont = document.getElementById('resultadoConsulta');
+  if (valorTexto !== '' && !existe) {
 
-    if (!resultado.encontrada) {
-      cont.innerHTML = '<div class="mensaje-alerta">⚠️ La OS "' + escapeHtml(resultado.os) +
-        '" no se encontró en el modo actual (' + escapeHtml(etiquetaDeModo(resultado.modo)) + '). ' +
-        'Verifica si pertenece al otro modo (JF / Llano) y vuelve a intentar.</div>';
+    const option = document.createElement('option');
+    option.value = valorTexto;
+    option.textContent = valorTexto;
+    select.appendChild(option);
+
+  }
+
+  select.value = valorTexto;
+
+}
+
+
+/**
+ * =========================================================
+ * CONVERTIR FECHA
+ * =========================================================
+ */
+function convertirFecha(fecha) {
+
+  if (!fecha) {
+    return '';
+  }
+
+  if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    return fecha;
+  }
+
+  const d = new Date(fecha);
+
+  if (isNaN(d.getTime())) {
+    return '';
+  }
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return year + '-' + month + '-' + day;
+
+}
+
+
+/**
+ * =========================================================
+ * FORMATEAR FECHA PARA TABLA
+ * =========================================================
+ */
+function formatearFecha(fecha) {
+
+  if (!fecha) {
+    return '';
+  }
+
+  if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    const partes = fecha.split('-');
+    return partes[2] + '/' + partes[1] + '/' + partes[0];
+  }
+
+  return fecha;
+
+}
+
+
+/**
+ * =========================================================
+ * LIMPIAR FORMULARIO (Operaciones)
+ * =========================================================
+ */
+function limpiar() {
+
+  document.getElementById('os').value = '';
+  document.getElementById('estadoFacturacion').value = '';
+  document.getElementById('estadoOperacion').value = '';
+  document.getElementById('placa').value = '';
+  document.getElementById('conductor').value = '';
+  document.getElementById('ruta').value = '';
+  document.getElementById('carga').value = '';
+  document.getElementById('cliente').value = '';
+  document.getElementById('manifiesto').value = '';
+
+  establecerFecha();
+
+}
+
+
+/**
+ * =========================================================
+ * ESCAPAR HTML
+ * =========================================================
+ */
+function escapeHTML(valor) {
+
+  if (valor === null || valor === undefined) {
+    return '';
+  }
+
+  return valor
+    .toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+}
+
+
+/**
+ * =========================================================================
+ *   GASTOS POR CONDUCTOR (pestaña nueva)
+ * =========================================================================
+ */
+
+
+/**
+ * =========================================================
+ * CARGAR LISTAS DE GASTOS (tipos y OS disponibles)
+ * =========================================================
+ * Si esto falla (por ejemplo, la primera vez que se autoriza el
+ * script), las casillas de tipo de gasto ya están construidas
+ * desde GASTOS_TIPOS_RESPALDO en window.onload, así que el
+ * formulario sigue siendo usable — solo el autocompletar de OS
+ * quedaría vacío hasta reintentar.
+ */
+function cargarListasGastos() {
+
+  google.script.run
+
+    .withSuccessHandler(function(listas) {
+
+      if (listas.tiposGasto && listas.tiposGasto.length) {
+        construirChecklistGastos(listas.tiposGasto);
+      }
+
+      const datalist = document.getElementById('listaOsGastos');
+      datalist.innerHTML = '';
+
+      (listas.osDisponibles || []).forEach(function(os) {
+        const option = document.createElement('option');
+        option.value = os;
+        datalist.appendChild(option);
+      });
+
+    })
+
+    .withFailureHandler(function(error) {
+      mostrarToast('❌ Error cargando listas de gastos: ' + error.message, 'error');
+    })
+
+    .obtenerListasGastos(modoActual);
+
+}
+
+
+/**
+ * =========================================================
+ * CONSTRUIR CASILLAS DE TIPO DE GASTO
+ * =========================================================
+ * Cada casilla, al marcarse, muestra su propio campo de valor.
+ * Solo reconstruye si la lista cambió, para no perder lo que el
+ * usuario ya haya marcado/escrito mientras llena el formulario.
+ */
+function construirChecklistGastos(tipos) {
+
+  const contenedor = document.getElementById('gastosChecklist');
+
+  if (contenedor.dataset.construido === JSON.stringify(tipos)) {
+    return; // ya está armado con esta misma lista, no lo reemplaces
+  }
+
+  contenedor.innerHTML = '';
+  contenedor.dataset.construido = JSON.stringify(tipos);
+
+  tipos.forEach(function(tipo, indice) {
+
+    const idCheckbox = 'gastoCheck_' + indice;
+    const idValor = 'gastoValor_' + indice;
+
+    const item = document.createElement('div');
+    item.className = 'gasto-item';
+    item.dataset.tipo = tipo;
+
+    item.innerHTML =
+      '<input type="checkbox" id="' + idCheckbox + '" onchange="alternarGastoItem(this)">' +
+      '<label class="gasto-nombre" for="' + idCheckbox + '">' + escapeHTML(tipo) + '</label>' +
+      '<input type="number" class="gasto-valor" id="' + idValor + '" placeholder="Valor $" min="0" step="1">';
+
+    contenedor.appendChild(item);
+
+  });
+
+}
+
+
+/**
+ * =========================================================
+ * MOSTRAR/OCULTAR EL CAMPO DE VALOR AL MARCAR UNA CASILLA
+ * =========================================================
+ */
+function alternarGastoItem(checkbox) {
+
+  const item = checkbox.closest('.gasto-item');
+  item.classList.toggle('marcado', checkbox.checked);
+
+  if (checkbox.checked) {
+    item.querySelector('.gasto-valor').focus();
+  }
+
+}
+
+
+/**
+ * =========================================================
+ * REGISTRAR GASTO(S) (se suman a la fila de esa OS)
+ * =========================================================
+ */
+function registrarGasto() {
+
+  const btn = document.getElementById('btnGuardarGasto');
+  const status = document.getElementById('statusGasto');
+  const statusText = document.getElementById('statusGastoText');
+
+  const items = [];
+  let huboValorInvalido = false;
+
+  document.querySelectorAll('#gastosChecklist .gasto-item').forEach(function(item) {
+
+    const checkbox = item.querySelector('input[type="checkbox"]');
+
+    if (!checkbox.checked) {
       return;
     }
 
-    const op = resultado.operacion;
-    const gastos = resultado.gastos;
+    const campoValor = item.querySelector('.gasto-valor');
+    const valor = Number(campoValor.value);
 
-    const bloqueConductor =
-      '<div class="tarjeta">' +
-        '<h2>🧑‍✈️ Conductor y vehículo</h2>' +
-        campoLectura('Conductor', op.conductor) +
-        campoLectura('Placa', op.placa) +
-        campoLectura('Placa trailer', op.placaTrailer) +
+    if (!valor || valor <= 0) {
+      huboValorInvalido = true;
+      return;
+    }
+
+    items.push({ tipo: item.dataset.tipo, valor: valor });
+
+  });
+
+  const payload = {
+    modo: modoActual,
+    os: document.getElementById('gastoOs').value.trim(),
+    legalizacion: document.getElementById('gastoLegalizacion').value.trim(),
+    items: items
+  };
+
+  if (!payload.os) {
+    mostrarToast('⚠️ La OS interna es obligatoria.', 'error');
+    document.getElementById('gastoOs').focus();
+    return;
+  }
+
+  if (huboValorInvalido) {
+    mostrarToast('⚠️ Hay un tipo marcado sin un valor mayor a cero.', 'error');
+    return;
+  }
+
+  if (items.length === 0 && !payload.legalizacion) {
+    mostrarToast('⚠️ Marca al menos un tipo de gasto, o escribe algo en legalización.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  statusText.textContent = 'Guardando gasto(s)...';
+  status.style.display = 'flex';
+
+  google.script.run
+
+    .withSuccessHandler(function(resultado) {
+
+      status.style.display = 'none';
+      btn.disabled = false;
+
+      mostrarToast(resultado.mensaje, 'success');
+      mostrarResumenOS(resultado.resumen);
+      limpiarGasto(true);
+
+    })
+
+    .withFailureHandler(function(error) {
+
+      status.style.display = 'none';
+      btn.disabled = false;
+
+      mostrarToast('❌ Error guardando el gasto: ' + error.message, 'error');
+
+    })
+
+    .guardarGastosLote(payload);
+
+}
+
+
+/**
+ * =========================================================
+ * REGISTRAR ANTICIPO (valor + fecha)
+ * =========================================================
+ */
+function registrarAnticipo() {
+
+  const os = document.getElementById('gastoOs').value.trim();
+  const valor = Number(document.getElementById('anticipoValor').value);
+  const fecha = document.getElementById('anticipoFecha').value;
+
+  if (!os) {
+    mostrarToast('⚠️ Escribe primero la OS interna.', 'error');
+    document.getElementById('gastoOs').focus();
+    return;
+  }
+
+  if (!valor || valor <= 0) {
+    mostrarToast('⚠️ El valor del anticipo debe ser mayor a cero.', 'error');
+    return;
+  }
+
+  if (!fecha) {
+    mostrarToast('⚠️ La fecha del anticipo es obligatoria.', 'error');
+    return;
+  }
+
+  const status = document.getElementById('statusGasto');
+  const statusText = document.getElementById('statusGastoText');
+
+  status.style.display = 'flex';
+  statusText.textContent = 'Guardando anticipo...';
+
+  google.script.run
+
+    .withSuccessHandler(function(resultado) {
+
+      status.style.display = 'none';
+
+      mostrarToast(resultado.mensaje, 'success');
+      mostrarResumenOS(resultado.resumen);
+
+      document.getElementById('anticipoValor').value = '';
+      establecerFecha();
+
+    })
+
+    .withFailureHandler(function(error) {
+
+      status.style.display = 'none';
+      mostrarToast('❌ ' + error.message, 'error');
+
+    })
+
+    .agregarAnticipo({ modo: modoActual, os: os, valor: valor, fecha: fecha });
+
+}
+
+
+/**
+ * =========================================================
+ * CONSULTAR RESUMEN DE LA OS (anticipo, gastos, legalización)
+ * =========================================================
+ */
+function consultarResumenOS() {
+
+  const os = document.getElementById('gastoOs').value.trim();
+
+  if (!os) {
+    document.getElementById('resumenOS').classList.remove('activa');
+    return;
+  }
+
+  google.script.run
+
+    .withSuccessHandler(function(resumen) {
+      mostrarResumenOS(resumen);
+    })
+
+    .withFailureHandler(function(error) {
+      document.getElementById('resumenOS').classList.remove('activa');
+      mostrarToast('❌ ' + error.message, 'error');
+    })
+
+    .obtenerResumenOS(os, modoActual);
+
+}
+
+
+/**
+ * =========================================================
+ * MOSTRAR RESUMEN DE LA OS EN PANTALLA
+ * =========================================================
+ * Ya NO muestra manifiesto/remesa/factura (esas columnas se movieron
+ * fuera de 'Gastos_Conductores' — se consultan en la pestaña
+ * "🔎 Consultar Operación"). Solo sigue mostrando la legalización.
+ */
+function mostrarResumenOS(resumen) {
+
+  ultimoResumenOS = resumen || null;
+
+  if (!resumen) {
+    document.getElementById('resumenOS').classList.remove('activa');
+    cerrarEdicionGastos();
+    return;
+  }
+
+  document.getElementById('resConductor').textContent = resumen.conductor || '—';
+  document.getElementById('resPlaca').textContent = resumen.placa || '—';
+  document.getElementById('resGastos').textContent = formatearMoneda(resumen.totalGastos);
+  document.getElementById('resAnticipos').textContent = formatearMoneda(resumen.totalAnticipos);
+  document.getElementById('resDiferencia').textContent = formatearMoneda(resumen.diferencia);
+
+  document.getElementById('resLegalizacion').innerHTML = badgeDocumento(resumen.legalizacion);
+  document.getElementById('resEstado').innerHTML = badgeEstado(resumen.estado);
+
+  const tablaCategorias = document.getElementById('resTablaCategorias');
+  let filasCategorias = '<tr><th>Categoría</th><th>Valor acumulado</th></tr>';
+  (resumen.categorias || []).forEach(function(c) {
+    filasCategorias += '<tr><td>' + escapeHTML(c.tipo) + '</td><td>' + formatearMoneda(c.valor) + '</td></tr>';
+  });
+  tablaCategorias.innerHTML = filasCategorias;
+
+  const tablaAnticipos = document.getElementById('resTablaAnticipos');
+  let filasAnticipos = '<tr><th>Valor</th><th>Fecha</th></tr>';
+  if (resumen.anticipos && resumen.anticipos.length) {
+    resumen.anticipos.forEach(function(a) {
+      filasAnticipos += '<tr><td>' + formatearMoneda(a.valor) + '</td><td>' + escapeHTML(a.fecha) + '</td></tr>';
+    });
+  } else {
+    filasAnticipos += '<tr><td colspan="2">Aún no hay anticipos registrados.</td></tr>';
+  }
+  if (typeof resumen.espaciosAnticipoLibres === 'number' && resumen.espaciosAnticipoLibres === 0) {
+    filasAnticipos += '<tr><td colspan="2" style="color:#dc2626;">Las 3 casillas de anticipo ya están ocupadas.</td></tr>';
+  }
+  tablaAnticipos.innerHTML = filasAnticipos;
+
+  document.getElementById('resumenOS').classList.add('activa');
+
+}
+
+
+/**
+ * =========================================================
+ * EDICIÓN (SOBRESCRITURA) DE GASTOS Y ANTICIPOS YA GUARDADOS
+ * =========================================================
+ * Guarda el último resumen cargado para poder pre-llenar el
+ * formulario de edición, y arma dinámicamente los 8 campos de
+ * categoría + 3 campos de anticipo (valor + fecha).
+ */
+let ultimoResumenOS = null;
+
+function abrirEdicionGastos() {
+
+  if (!ultimoResumenOS) {
+    mostrarToast('⚠️ Consulta primero una OS para poder editarla.', 'error');
+    return;
+  }
+
+  document.getElementById('edicionOSLabel').textContent = ultimoResumenOS.os;
+
+  const gridCategorias = document.getElementById('edicionCategoriasGrid');
+  gridCategorias.innerHTML = '';
+
+  (ultimoResumenOS.categorias || []).forEach(function(c, i) {
+
+    const campo = document.createElement('div');
+    campo.className = 'edicion-campo';
+
+    campo.innerHTML =
+      '<label>' + escapeHTML(c.tipo) + '</label>' +
+      '<input type="number" min="0" step="1" data-tipo="' + escapeHTML(c.tipo) + '" ' +
+      'class="edicion-input-categoria" value="' + (c.valor || 0) + '">';
+
+    gridCategorias.appendChild(campo);
+
+  });
+
+  const gridAnticipos = document.getElementById('edicionAnticiposGrid');
+  gridAnticipos.innerHTML = '';
+
+  (ultimoResumenOS.anticiposSlots || []).forEach(function(a, i) {
+
+    const campo = document.createElement('div');
+    campo.className = 'edicion-campo-anticipo';
+
+    campo.innerHTML =
+      '<div class="edicion-campo">' +
+        '<label>Anticipo ' + (i + 1) + ' - Valor</label>' +
+        '<input type="number" min="0" step="1" class="edicion-input-anticipo-valor" value="' + (a.valor || 0) + '">' +
+      '</div>' +
+      '<div class="edicion-campo" style="margin-top:6px;">' +
+        '<label>Anticipo ' + (i + 1) + ' - Fecha</label>' +
+        '<input type="date" class="edicion-input-anticipo-fecha" value="' + (a.fecha || '') + '">' +
       '</div>';
 
-    const bloqueViaje =
-      '<div class="tarjeta">' +
-        '<h2>🗺️ Datos del viaje</h2>' +
-        campoLectura('Fecha', op.fecha) +
-        campoLectura('OS', op.os) +
-        campoLectura('Ruta', op.ruta) +
-        campoLectura('Carga', op.carga) +
-        campoLectura('Cliente', op.cliente) +
-        campoLectura('Estado operación', op.estadoOperacion) +
-        campoLectura('Estado facturación', op.estadoFacturacion) +
-        campoLectura('Valor flete', formatoMoneda(op.valorFlete)) +
-      '</div>';
+    gridAnticipos.appendChild(campo);
 
-    const bloqueDocumentos =
-      '<div class="tarjeta">' +
-        '<h2>📂 Documentos del viaje</h2>' +
-        '<div class="lista-docs">' +
-          filaDoc('Remesa', op.documentos.remesa) +
-          filaDoc('Manifiesto', op.documentos.manifiesto) +
-          filaDoc('Cumplido', op.documentos.cumplido) +
-          filaDoc('Factura', op.documentos.factura) +
-        '</div>' +
-      '</div>';
+  });
 
-    let bloqueGastos;
-    if (!gastos) {
-      bloqueGastos =
-        '<div class="tarjeta">' +
-          '<h2>💰 Gastos y legalización</h2>' +
-          '<div class="mensaje-vacio">Esta operación aún no tiene gastos registrados.</div>' +
-        '</div>';
-    } else {
-      const filasCategorias = gastos.categorias.map(function(c) {
-        return '<tr><td>' + escapeHtml(c.tipo) + '</td><td>' + formatoMoneda(c.valor) + '</td></tr>';
-      }).join('');
+  document.getElementById('edicionGastos').style.display = 'block';
+  document.getElementById('edicionGastos').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-      const filasAnticipos = gastos.anticipos.length
-        ? gastos.anticipos.map(function(a) {
-            return '<tr><td>Anticipo (' + escapeHtml(a.fecha) + ')</td><td>' + formatoMoneda(a.valor) + '</td></tr>';
-          }).join('')
-        : '<tr><td colspan="2" style="color:var(--texto-suave);">Sin anticipos registrados.</td></tr>';
+}
 
-      const badgeEstado = gastos.estado
-        ? '<span class="badge ' + (gastos.estado.toString().toUpperCase() === 'COMPLETO' ? 'badge-ok' : 'badge-pendiente') + '">' + escapeHtml(gastos.estado) + '</span>'
-        : '<span class="badge badge-neutro">SIN ESTADO</span>';
 
-      bloqueGastos =
-        '<div class="tarjeta">' +
-          '<h2>💰 Gastos y legalización</h2>' +
-          '<table class="tabla-resumen"><tbody>' + filasCategorias + '</tbody></table>' +
-          '<h3 style="margin-top:12px;">Anticipos</h3>' +
-          '<table class="tabla-resumen"><tbody>' + filasAnticipos + '</tbody></table>' +
-          '<div class="totales-resumen">' +
-            '<div class="linea"><span>Total gastos</span><span>' + formatoMoneda(gastos.totalGastos) + '</span></div>' +
-            '<div class="linea"><span>Total anticipos</span><span>' + formatoMoneda(gastos.totalAnticipos) + '</span></div>' +
-            '<div class="linea total"><span>Diferencia</span><span>' + formatoMoneda(gastos.diferencia) + '</span></div>' +
-          '</div>' +
-          '<div class="fila-doc" style="margin-top:10px;"><span class="nombre-doc">📎 Legalización</span>' + badgeDocumento(gastos.legalizacion) + '</div>' +
-          '<div class="fila-doc"><span class="nombre-doc">Estado general</span>' + badgeEstado + '</div>' +
-        '</div>';
-    }
+function cerrarEdicionGastos() {
+  document.getElementById('edicionGastos').style.display = 'none';
+}
 
-    cont.innerHTML = '<div class="bloques-consulta">' + bloqueConductor + bloqueViaje + bloqueDocumentos + bloqueGastos + '</div>';
+
+function guardarEdicionGastos() {
+
+  if (!ultimoResumenOS) {
+    return;
   }
 
-  function campoLectura(etiqueta, valor) {
-    return '<div class="campo-lectura"><span class="etq">' + escapeHtml(etiqueta) + '</span>' +
-      '<div class="val">' + (valor ? escapeHtml(valor) : '<span style="color:var(--texto-suave);">—</span>') + '</div></div>';
-  }
+  const categorias = [];
+  document.querySelectorAll('.edicion-input-categoria').forEach(function(input) {
+    categorias.push({ tipo: input.getAttribute('data-tipo'), valor: Number(input.value) || 0 });
+  });
 
-  function filaDoc(etiqueta, valor) {
-    return '<div class="fila-doc"><span class="nombre-doc">' + escapeHtml(etiqueta) + '</span>' + badgeDocumento(valor) + '</div>';
-  }
+  const anticipos = [];
+  const valoresAnt = document.querySelectorAll('.edicion-input-anticipo-valor');
+  const fechasAnt = document.querySelectorAll('.edicion-input-anticipo-fecha');
 
-  // =========================================================
-  // AYUDANTES: documentos, dinero, texto seguro
-  // =========================================================
-  function badgeDocumento(valor) {
-    const texto = (valor === null || valor === undefined) ? '' : valor.toString().trim();
-    if (!texto) {
-      return '<span class="badge badge-falta">FALTA</span>';
-    }
-    if (/^https?:\/\//i.test(texto)) {
-      return '<a class="btn-doc" href="' + escapeAtributo(texto) + '" target="_blank" rel="noopener">📄 Ver documento</a>';
-    }
-    return '<span class="badge badge-pendiente" title="' + escapeAtributo(texto) + '">' + escapeHtml(texto) + '</span>';
-  }
-
-  function formatoMoneda(valor) {
-    if (valor === null || valor === undefined || valor === '') return '—';
-    const numero = Number(valor);
-    if (isNaN(numero)) return escapeHtml(valor);
-    try {
-      return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(numero);
-    } catch (e) {
-      return '$' + numero.toLocaleString();
-    }
-  }
-
-  function escapeHtml(valor) {
-    return (valor === null || valor === undefined ? '' : valor.toString())
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
-  function escapeAtributo(valor) {
-    return escapeHtml(valor).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  // =========================================================
-  // TOASTS Y SPINNER
-  // =========================================================
-  function mostrarToast(mensaje, tipo) {
-    const contenedor = document.getElementById('toasts');
-    const div = document.createElement('div');
-    div.className = 'toast toast-' + (tipo === 'error' ? 'error' : (tipo === 'info' ? 'info' : 'exito'));
-    div.textContent = mensaje;
-    contenedor.appendChild(div);
-    setTimeout(function() {
-      div.style.opacity = '0';
-      div.style.transition = 'opacity .25s';
-      setTimeout(function() { div.remove(); }, 260);
-    }, 3600);
-  }
-
-  let contadorCargas = 0;
-  function mostrarCargando(activo) {
-    contadorCargas += activo ? 1 : -1;
-    if (contadorCargas < 0) contadorCargas = 0;
-    document.getElementById('overlay-carga').classList.toggle('visible', contadorCargas > 0);
-  }
-
-  // =========================================================
-  // PUENTE CON EL SERVIDOR (Apps Script)
-  // =========================================================
-  function llamarServidor(nombreFuncion) {
-    const args = Array.prototype.slice.call(arguments, 1);
-    mostrarCargando(true);
-    return new Promise(function(resolve, reject) {
-      google.script.run
-        .withSuccessHandler(function(resultado) {
-          mostrarCargando(false);
-          resolve(resultado);
-        })
-        .withFailureHandler(function(error) {
-          mostrarCargando(false);
-          mostrarToast(error && error.message ? error.message : String(error), 'error');
-          reject(error);
-        })[nombreFuncion].apply(null, args);
+  for (let i = 0; i < valoresAnt.length; i++) {
+    anticipos.push({
+      valor: Number(valoresAnt[i].value) || 0,
+      fecha: fechasAnt[i].value || ''
     });
   }
+
+  const payload = { modo: modoActual, os: ultimoResumenOS.os, categorias: categorias, anticipos: anticipos };
+
+  google.script.run
+
+    .withSuccessHandler(function(resultado) {
+
+      mostrarToast(resultado.mensaje, 'success');
+      mostrarResumenOS(resultado.resumen);
+      cerrarEdicionGastos();
+
+    })
+
+    .withFailureHandler(function(error) {
+      mostrarToast('❌ ' + error.message, 'error');
+    })
+
+    .actualizarGastosOS(payload);
+
+}
+
+
+/**
+ * =========================================================
+ * BADGE DE DOCUMENTO (link de Drive o "FALTA")
+ * =========================================================
+ * Un solo valor crudo (celda de la hoja): si empieza por "http" se
+ * muestra como botón "Ver documento"; si tiene otro texto se muestra
+ * tal cual en un badge de "pendiente"; si está vacío, "FALTA". La usan
+ * tanto el resumen de Gastos (legalización) como la pestaña de
+ * Consultar Operación (remesa, manifiesto, cumplido, factura).
+ */
+function badgeDocumento(valorCrudo) {
+
+  const texto = (valorCrudo === null || valorCrudo === undefined) ? '' : valorCrudo.toString().trim();
+
+  if (!texto) {
+    return '<span class="badge falta">FALTA</span>';
+  }
+
+  if (/^https?:\/\//i.test(texto)) {
+    return '<a href="' + escapeHTML(texto) + '" target="_blank" rel="noopener" class="badge ok badge-link">📄 Ver documento</a>';
+  }
+
+  return '<span class="badge pendiente" title="' + escapeHTML(texto) + '">' + escapeHTML(texto) + '</span>';
+
+}
+
+
+function badgeEstado(valor) {
+
+  const texto = (valor || '').toString();
+  const esCompleto = texto.toUpperCase() === 'COMPLETO';
+
+  return '<span class="badge ' + (esCompleto ? 'completo' : 'pendiente') + '">' + escapeHTML(texto || 'PENDIENTE') + '</span>';
+
+}
+
+
+function formatearMoneda(valor) {
+
+  const numero = Number(valor) || 0;
+
+  return '$' + numero.toLocaleString('es-CO');
+
+}
+
+
+/**
+ * =========================================================
+ * LIMPIAR FORMULARIO DE GASTO
+ * =========================================================
+ * @param {boolean} mantenerOS Si es true, no borra la OS ni el
+ * resumen (útil justo después de guardar, para seguir viendo
+ * el resumen actualizado de la misma operación).
+ */
+function limpiarGasto(mantenerOS) {
+
+  document.querySelectorAll('#gastosChecklist .gasto-item').forEach(function(item) {
+
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    checkbox.checked = false;
+    item.classList.remove('marcado');
+    item.querySelector('.gasto-valor').value = '';
+
+  });
+
+  document.getElementById('gastoLegalizacion').value = '';
+
+  if (!mantenerOS) {
+    document.getElementById('gastoOs').value = '';
+    document.getElementById('resumenOS').classList.remove('activa');
+  }
+
+  establecerFecha();
+
+}
+
+
+/**
+ * =========================================================================
+ *   CONSULTAR OPERACIÓN (pestaña nueva, solo lectura)
+ * =========================================================================
+ */
+function consultarOperacionCompletaUI() {
+
+  const os = document.getElementById('consultaOs').value.trim();
+
+  if (!os) {
+    mostrarToast('⚠️ Escribe una OS para consultar.', 'error');
+    return;
+  }
+
+  const contenedor = document.getElementById('resultadoConsulta');
+  contenedor.innerHTML = '<div class="empty">Consultando...</div>';
+
+  google.script.run
+
+    .withSuccessHandler(function(resultado) {
+      renderizarConsulta(resultado);
+    })
+
+    .withFailureHandler(function(error) {
+      contenedor.innerHTML = '';
+      mostrarToast('❌ ' + error.message, 'error');
+    })
+
+    .consultarOperacionCompleta(os, modoActual);
+
+}
+
+
+function renderizarConsulta(resultado) {
+
+  const contenedor = document.getElementById('resultadoConsulta');
+
+  if (!resultado.encontrada) {
+
+    contenedor.innerHTML = '<div class="alerta-no-encontrada">⚠️ La OS "' + escapeHTML(resultado.os) +
+      '" no se encontró en el modo actual (' + escapeHTML(etiquetaDeModo(resultado.modo)) + '). ' +
+      'Verifica si pertenece al otro modo (JF / Llano) y vuelve a intentar.</div>';
+
+    return;
+
+  }
+
+  const op = resultado.operacion;
+  const gastos = resultado.gastos;
+
+  let html = '<div class="bloques-consulta">';
+
+  html += '<div class="bloque-consulta"><h3>🧑‍✈️ Conductor y vehículo</h3><div class="bloque-grid">' +
+    campoResumenConsulta('Conductor', op.conductor) +
+    campoResumenConsulta('Placa', op.placa) +
+    campoResumenConsulta('Placa trailer', op.placaTrailer) +
+    '</div></div>';
+
+  html += '<div class="bloque-consulta"><h3>🗺️ Datos del viaje</h3><div class="bloque-grid">' +
+    campoResumenConsulta('Fecha', formatearFecha(op.fecha)) +
+    campoResumenConsulta('OS', op.os) +
+    campoResumenConsulta('Ruta', op.ruta) +
+    campoResumenConsulta('Carga', op.carga) +
+    campoResumenConsulta('Cliente', op.cliente) +
+    campoResumenConsulta('Estado operación', op.estadoOperacion) +
+    campoResumenConsulta('Estado facturación', op.estadoFacturacion) +
+    campoResumenConsulta('Valor flete', op.valorFlete ? formatearMoneda(op.valorFlete) : '') +
+    '</div></div>';
+
+  html += '<div class="bloque-consulta"><h3>📂 Documentos del viaje</h3>' +
+    filaDocumentoConsulta('Remesa', op.documentos.remesa) +
+    filaDocumentoConsulta('Manifiesto', op.documentos.manifiesto) +
+    filaDocumentoConsulta('Cumplido', op.documentos.cumplido) +
+    filaDocumentoConsulta('Factura', op.documentos.factura) +
+    '</div>';
+
+  if (!gastos) {
+
+    html += '<div class="bloque-consulta"><h3>💰 Gastos y legalización</h3>' +
+      '<div class="empty">Esta operación aún no tiene gastos registrados.</div></div>';
+
+  } else {
+
+    let filasCategorias = '<tr><th>Categoría</th><th>Valor acumulado</th></tr>';
+    gastos.categorias.forEach(function(c) {
+      filasCategorias += '<tr><td>' + escapeHTML(c.tipo) + '</td><td>' + formatearMoneda(c.valor) + '</td></tr>';
+    });
+
+    let filasAnticipos = '<tr><th>Valor</th><th>Fecha</th></tr>';
+    if (gastos.anticipos.length) {
+      gastos.anticipos.forEach(function(a) {
+        filasAnticipos += '<tr><td>' + formatearMoneda(a.valor) + '</td><td>' + escapeHTML(a.fecha) + '</td></tr>';
+      });
+    } else {
+      filasAnticipos += '<tr><td colspan="2">Sin anticipos registrados.</td></tr>';
+    }
+
+    html += '<div class="bloque-consulta"><h3>💰 Gastos y legalización</h3>' +
+      '<table class="resumen-tabla">' + filasCategorias + '</table>' +
+      '<table class="resumen-tabla" style="margin-top:10px;">' + filasAnticipos + '</table>' +
+      '<div class="bloque-grid" style="margin-top:12px;">' +
+        campoResumenConsulta('Total gastos', formatearMoneda(gastos.totalGastos)) +
+        campoResumenConsulta('Total anticipos', formatearMoneda(gastos.totalAnticipos)) +
+        campoResumenConsulta('Diferencia', formatearMoneda(gastos.diferencia)) +
+        '<div class="resumen-item"><span class="label-mini">Estado general</span><span class="valor-mini">' + badgeEstado(gastos.estado) + '</span></div>' +
+      '</div>' +
+      '<div class="doc-fila" style="margin-top:10px;"><span class="doc-nombre">📎 Legalización</span>' + badgeDocumento(gastos.legalizacion) + '</div>' +
+      '</div>';
+
+  }
+
+  html += '</div>';
+
+  contenedor.innerHTML = html;
+
+}
+
+
+function campoResumenConsulta(etiqueta, valor) {
+
+  return '<div class="resumen-item"><span class="label-mini">' + escapeHTML(etiqueta) + '</span>' +
+    '<span class="valor-mini">' + (valor ? escapeHTML(valor) : '—') + '</span></div>';
+
+}
+
+
+function filaDocumentoConsulta(etiqueta, valor) {
+
+  return '<div class="doc-fila"><span class="doc-nombre">' + escapeHTML(etiqueta) + '</span>' + badgeDocumento(valor) + '</div>';
+
+}
+
 
 </script>
+
+
+</body>
+
+</html>
