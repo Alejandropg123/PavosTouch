@@ -584,13 +584,40 @@
     .badge-link {
       text-decoration: none;
       cursor: pointer;
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: #dcfce7;
+      color: var(--success);
     }
 
     .badge-link:hover {
       background: #bbf7d0;
     }
+
+    .badge-none {
+      color: #94a3b8;
+      font-size: 0.78rem;
+    }
+
     .badge.completo { background: #dcfce7; color: var(--success); }
     .badge.pendiente { background: #fef3c7; color: var(--warning); }
+
+
+    /* ESTADÍSTICAS (pestaña Consultar Operación) */
+
+    .resumen {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px 16px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 18px;
+    }
 
 
     /* CASILLAS DE TIPO DE GASTO */
@@ -796,6 +823,10 @@
       }
 
       .resumen-os {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .resumen {
         grid-template-columns: 1fr 1fr;
       }
 
@@ -1222,26 +1253,57 @@
 
   <div class="tab-panel" id="panelConsulta">
 
+    <div class="resumen">
+      <div class="resumen-item"><span class="label-mini">Total operaciones</span><span class="valor-mini" id="statConsultaTotal">—</span></div>
+      <div class="resumen-item"><span class="label-mini">Facturadas</span><span class="valor-mini" id="statConsultaFacturadas">—</span></div>
+      <div class="resumen-item"><span class="label-mini">Legalizadas</span><span class="valor-mini" id="statConsultaLegalizadas">—</span></div>
+      <div class="resumen-item"><span class="label-mini">Pendientes de legalizar</span><span class="valor-mini" id="statConsultaPendientes">—</span></div>
+    </div>
+
     <div class="search-container">
 
       <input
         type="text"
         id="consultaOs"
-        placeholder="🔎 Escribe la OS interna a consultar..."
-        onkeydown="if (event.key === 'Enter') { event.preventDefault(); consultarOperacionCompletaUI(); }"
+        placeholder="🔎 Buscar por OS, placa, cliente o conductor..."
+        oninput="buscarConDebounceConsulta()"
+        onkeydown="if (event.key === 'Enter') { event.preventDefault(); consultarOperacionCompletaUI(this.value); }"
       >
 
-      <button class="btn-search" onclick="consultarOperacionCompletaUI()">
-        🔎 Consultar
+      <button class="btn-search" onclick="limpiarBusquedaConsulta()">
+        🧹 Limpiar
       </button>
 
     </div>
 
     <div class="search-hint">
-      Vista de solo lectura: agrupa conductor, viaje, documentos (con acceso directo al PDF) y gastos/legalización de una misma OS, respetando el modo activo (JF / Llano). Nunca crea filas nuevas en "Gastos_Conductores".
+      Haz clic en una fila para ver el detalle completo — conductor, viaje, documentos y gastos/legalización — de esa operación. Es de solo lectura: nunca crea filas nuevas en "Gastos_Conductores".
     </div>
 
-    <div id="resultadoConsulta"></div>
+    <div class="table-container">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>OS</th>
+              <th>Cliente</th>
+              <th>Conductor</th>
+              <th>Placa</th>
+              <th>Remesa</th>
+              <th>Manifiesto</th>
+              <th>Cumplido</th>
+              <th>Factura</th>
+              <th>Gastos</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpoTablaConsulta"><tr><td colspan="10" class="empty">Cargando operaciones...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="contador" id="contadorConsulta"></div>
+
+    <div id="resultadoConsulta" style="margin-top:18px;"></div>
 
   </div>
 
@@ -1273,6 +1335,11 @@ let filtroLegalizado = false;
 // determina sobre qué hoja de operaciones se lee/escribe todo el panel.
 let modoActual = 'JF';
 let configuracionModos = [];
+
+// Dataset propio de la pestaña "Consultar Operación" (independiente del de
+// la pestaña Operaciones, para que un filtro en una no afecte a la otra).
+let datosConsulta = [];
+let debounceTimerConsulta = null;
 
 
 /**
@@ -1324,6 +1391,7 @@ function cargarConfiguracionModos() {
       cargarListas();
       cargarLista();
       cargarListasGastos();
+      cargarTablaConsulta();
 
     })
 
@@ -1336,6 +1404,7 @@ function cargarConfiguracionModos() {
       cargarListas();
       cargarLista();
       cargarListasGastos();
+      cargarTablaConsulta();
 
     })
 
@@ -1365,6 +1434,7 @@ function cambiarModo(nuevoModo) {
   cargarListas();
   cargarLista();
   cargarListasGastos();
+  cargarTablaConsulta();
 
   mostrarToast('Modo cambiado a ' + etiquetaDeModo(modoActual) + '.', 'info');
 
@@ -2493,13 +2563,154 @@ function limpiarGasto(mantenerOS) {
  * =========================================================================
  *   CONSULTAR OPERACIÓN (pestaña nueva, solo lectura)
  * =========================================================================
+ * Tabla tipo "Registros": trae TODAS las operaciones del modo activo (mismo
+ * endpoint que la pestaña Operaciones, pero en un dataset propio para no
+ * mezclar filtros entre pestañas) con estadísticas arriba y un badge de PDF
+ * por cada documento (remesa/manifiesto/cumplido/factura). Un clic en la
+ * fila trae el detalle completo (incluye gastos/legalización) por OS.
  */
-function consultarOperacionCompletaUI() {
+function cargarTablaConsulta() {
 
-  const os = document.getElementById('consultaOs').value.trim();
+  const cuerpo = document.getElementById('cuerpoTablaConsulta');
+  cuerpo.innerHTML = '<tr><td colspan="10" class="empty">Cargando operaciones...</td></tr>';
+
+  google.script.run
+
+    .withSuccessHandler(function(datos) {
+      datosConsulta = datos || [];
+      actualizarStatsConsulta();
+      renderTablaConsulta();
+    })
+
+    .withFailureHandler(function(error) {
+      cuerpo.innerHTML = '<tr><td colspan="10" class="empty">❌ Error cargando operaciones.</td></tr>';
+      mostrarToast('❌ Error cargando operaciones: ' + error.message, 'error');
+    })
+
+    .obtenerOperaciones(modoActual);
+
+}
+
+
+function actualizarStatsConsulta() {
+
+  const total = datosConsulta.length;
+  const facturadas = datosConsulta.filter(esFacturada).length;
+  const legalizadas = datosConsulta.filter(esLegalizada).length;
+
+  document.getElementById('statConsultaTotal').textContent = total;
+  document.getElementById('statConsultaFacturadas').textContent = facturadas;
+  document.getElementById('statConsultaLegalizadas').textContent = legalizadas;
+  document.getElementById('statConsultaPendientes').textContent = total - legalizadas;
+
+}
+
+
+function buscarConDebounceConsulta() {
+
+  clearTimeout(debounceTimerConsulta);
+  debounceTimerConsulta = setTimeout(renderTablaConsulta, 250);
+
+}
+
+
+function limpiarBusquedaConsulta() {
+
+  document.getElementById('consultaOs').value = '';
+  renderTablaConsulta();
+
+}
+
+
+function renderTablaConsulta() {
+
+  const texto = document.getElementById('consultaOs').value.trim().toLowerCase();
+  const cuerpo = document.getElementById('cuerpoTablaConsulta');
+  const contador = document.getElementById('contadorConsulta');
+
+  const datos = !texto ? datosConsulta : datosConsulta.filter(function(fila) {
+    return [fila[1], fila[4], fila[7], fila[8]].some(function(valor) {
+      return (valor || '').toString().toLowerCase().indexOf(texto) !== -1;
+    });
+  });
+
+  cuerpo.innerHTML = '';
+
+  if (!datos.length) {
+    cuerpo.innerHTML = '<tr><td colspan="10" class="empty">' +
+      (texto
+        ? 'No se encontraron operaciones que coincidan con "' + escapeHTML(texto) + '".'
+        : 'No hay operaciones registradas.') +
+      '</td></tr>';
+    contador.textContent = '';
+    return;
+  }
+
+  datos.forEach(function(fila) {
+
+    const tr = document.createElement('tr');
+    const os = fila[1] || '';
+
+    tr.onclick = function() { consultarOperacionCompletaUI(os); };
+
+    const estadoGastos = (fila[23] || '').toString().trim();
+    const legalizada = estadoGastos.toUpperCase() === 'COMPLETO';
+    const badgeGastos = estadoGastos
+      ? '<span class="badge-mini ' + (legalizada ? 'si' : 'no') + '">' + escapeHTML(estadoGastos) + '</span>'
+      : '<span class="badge-mini no">SIN DATOS</span>';
+
+    tr.innerHTML =
+      '<td>' + formatearFecha(fila[0]) + '</td>' +
+      '<td><strong>' + escapeHTML(os) + '</strong></td>' +
+      '<td>' + escapeHTML(fila[7]) + '</td>' +
+      '<td>' + escapeHTML(fila[8]) + '</td>' +
+      '<td>' + escapeHTML(fila[4]) + '</td>' +
+      '<td>' + celdaPdf(fila[15]) + '</td>' +
+      '<td>' + celdaPdf(fila[16]) + '</td>' +
+      '<td>' + celdaPdf(fila[17]) + '</td>' +
+      '<td>' + celdaPdf(fila[19]) + '</td>' +
+      '<td>' + badgeGastos + '</td>';
+
+    cuerpo.appendChild(tr);
+
+  });
+
+  contador.textContent = datos.length + (datos.length === 1 ? ' resultado' : ' resultados') +
+    (texto ? ' (de ' + datosConsulta.length + ' en total)' : '');
+
+}
+
+
+/**
+ * Celda de documento para la tabla: link verde "Ver PDF" si el valor
+ * empieza por http, texto atenuado si hay algo mas (nombre de archivo sin
+ * link), o un guion si está vacío. event.stopPropagation() evita que el
+ * clic en el link también dispare la apertura del detalle de la fila.
+ */
+function celdaPdf(valor) {
+
+  const texto = (valor === null || valor === undefined) ? '' : valor.toString().trim();
+
+  if (!texto) {
+    return '<span class="badge-none">—</span>';
+  }
+
+  if (/^https?:\/\//i.test(texto)) {
+    return '<a class="badge-link" target="_blank" rel="noopener" href="' + escapeHTML(texto) +
+      '" onclick="event.stopPropagation()">📄 Ver PDF</a>';
+  }
+
+  return '<span class="badge-none" title="' + escapeHTML(texto) + '">' + escapeHTML(texto) + '</span>';
+
+}
+
+
+function consultarOperacionCompletaUI(osParam) {
+
+  const os = (osParam !== undefined ? osParam : document.getElementById('consultaOs').value).toString().trim();
 
   if (!os) {
-    mostrarToast('⚠️ Escribe una OS para consultar.', 'error');
+    mostrarToast('⚠️ Escribe o haz clic en una OS para consultar.', 'error');
     return;
   }
 
@@ -2510,6 +2721,7 @@ function consultarOperacionCompletaUI() {
 
     .withSuccessHandler(function(resultado) {
       renderizarConsulta(resultado);
+      contenedor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     })
 
     .withFailureHandler(function(error) {
