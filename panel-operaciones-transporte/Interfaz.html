@@ -1851,7 +1851,10 @@ function alternarFiltro(tipo) {
 
 
 function esFacturada(fila) {
-  return (fila[2] || '').toString().trim().toUpperCase() === 'FACTURADA';
+  // Comparación por "contiene" y no por igualdad exacta: el dato real en la
+  // hoja trae un emoji delante ("🟢FACTURADA"), así que un === nunca
+  // coincidía y las estadísticas/filtros de facturadas siempre daban 0.
+  return (fila[2] || '').toString().trim().toUpperCase().indexOf('FACTURADA') !== -1;
 }
 
 
