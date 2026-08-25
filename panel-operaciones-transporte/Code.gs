@@ -1451,6 +1451,21 @@ function consultarOperacionCompleta(os, modo) {
     return valor || '';
   };
 
+  // En la práctica, las celdas de documentos casi nunca tienen el link de
+  // Drive pegado — solo el nombre del archivo (ej. "remesa 81336.pdf"), así
+  // que badgeDocumento() del cliente nunca los muestra como clicables. Como
+  // esos archivos sí están subidos a Drive con ese nombre exacto,
+  // resolverDoc() los busca por nombre y devuelve la URL real cuando los
+  // encuentra; si no los encuentra (o el valor ya era un link), lo deja tal
+  // cual. Ver resolverEnlaceDrivePorNombre() más abajo.
+  const resolverDoc = function(valorCrudo) {
+    const texto = (valorCrudo || '').toString().trim();
+    if (!texto || /^https?:\/\//i.test(texto)) {
+      return texto;
+    }
+    return resolverEnlaceDrivePorNombre(texto) || texto;
+  };
+
   const operacion = {
     fecha: leerFechaOp(filaOp[0]),
     os: filaOp[1] || '',
@@ -1464,10 +1479,10 @@ function consultarOperacionCompleta(os, modo) {
     placaTrailer: filaOp[10] || '', // columna K (índice 0-based 10)
     valorFlete: filaOp[12] || '',    // columna M
     documentos: {
-      remesa: filaOp[DOC_COL.remesa - 1] || '',
-      manifiesto: filaOp[DOC_COL.manifiesto - 1] || '',
-      cumplido: filaOp[DOC_COL.cumplido - 1] || '',
-      factura: filaOp[DOC_COL.factura - 1] || ''
+      remesa: resolverDoc(filaOp[DOC_COL.remesa - 1]),
+      manifiesto: resolverDoc(filaOp[DOC_COL.manifiesto - 1]),
+      cumplido: resolverDoc(filaOp[DOC_COL.cumplido - 1]),
+      factura: resolverDoc(filaOp[DOC_COL.factura - 1])
     }
   };
 
@@ -1482,5 +1497,46 @@ function consultarOperacionCompleta(os, modo) {
     operacion: operacion,
     gastos: gastos
   };
+
+}
+
+
+/**
+ * =========================================================
+ * RESOLVER EL LINK DE DRIVE DE UN DOCUMENTO POR SU NOMBRE
+ * =========================================================
+ * Los documentos (remesa, manifiesto, cumplido, factura) casi siempre se
+ * cargan a la hoja como el nombre del archivo, no como el link de Drive
+ * — el archivo sí está subido a Drive con ese mismo nombre exacto. Esta
+ * función lo busca por nombre y devuelve su URL real para que
+ * badgeDocumento() en el cliente lo pueda mostrar como "Ver PDF".
+ *
+ * Si hay más de un archivo con el mismo nombre, abre el primero que
+ * devuelva el iterador de Drive (aceptado: no se intenta desambiguar).
+ * Si no encuentra ninguno, o si DriveApp falla por cualquier motivo
+ * (permisos, etc.), devuelve '' — el llamador deja el texto tal cual,
+ * nunca rompe la consulta por esto.
+ */
+function resolverEnlaceDrivePorNombre(nombreArchivo) {
+
+  const nombre = (nombreArchivo || '').toString().trim();
+
+  if (!nombre) {
+    return '';
+  }
+
+  try {
+
+    const archivos = DriveApp.getFilesByName(nombre);
+
+    if (archivos.hasNext()) {
+      return archivos.next().getUrl();
+    }
+
+  } catch (e) {
+    // Sin permiso o error de Drive: se deja como estaba, no rompe la consulta.
+  }
+
+  return '';
 
 }
