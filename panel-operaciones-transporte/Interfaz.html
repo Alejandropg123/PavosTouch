@@ -1260,6 +1260,49 @@
       <div class="resumen-item"><span class="label-mini">Pendientes de legalizar</span><span class="valor-mini" id="statConsultaPendientes">—</span></div>
     </div>
 
+    <label style="font-size:0.82rem; font-weight:600; color:#64748b; margin-bottom:8px; display:block;">
+      FILTRAR POR PROPIEDAD
+    </label>
+
+    <div class="grid-form" style="margin-bottom:12px;">
+
+      <div class="form-group">
+        <label>CONDUCTOR</label>
+        <select id="filtroConductor" onchange="renderTablaConsulta()">
+          <option value="">Todos los conductores</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>PLACA VEHÍCULO</label>
+        <select id="filtroPlaca" onchange="renderTablaConsulta()">
+          <option value="">Todas las placas</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>CLIENTE EMPRESA</label>
+        <select id="filtroCliente" onchange="renderTablaConsulta()">
+          <option value="">Todos los clientes</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>ESTADO FACTURACIÓN</label>
+        <select id="filtroEstadoFacturacion" onchange="renderTablaConsulta()">
+          <option value="">Todos los estados</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>ESTADO OPERACIÓN</label>
+        <select id="filtroEstadoOperacion" onchange="renderTablaConsulta()">
+          <option value="">Todos los estados</option>
+        </select>
+      </div>
+
+    </div>
+
     <div class="search-container">
 
       <input
@@ -1277,7 +1320,7 @@
     </div>
 
     <div class="search-hint">
-      Haz clic en una fila para ver el detalle completo — conductor, viaje, documentos y gastos/legalización — de esa operación. Es de solo lectura: nunca crea filas nuevas en "Gastos_Conductores".
+      Combina el texto libre con los filtros de arriba, o haz clic en una fila para ver el detalle completo — conductor, viaje, documentos y gastos/legalización — de esa operación. Es de solo lectura: nunca crea filas nuevas en "Gastos_Conductores".
     </div>
 
     <div class="table-container">
@@ -1557,6 +1600,12 @@ function cargarListas() {
       llenarSelect('cliente', listas.clientes);
       llenarSelect('conductor', listas.conductores);
 
+      llenarSelectFiltro('filtroConductor', listas.conductores, 'Todos los conductores');
+      llenarSelectFiltro('filtroPlaca', listas.placas, 'Todas las placas');
+      llenarSelectFiltro('filtroCliente', listas.clientes, 'Todos los clientes');
+      llenarSelectFiltro('filtroEstadoFacturacion', listas.estadosFacturacion, 'Todos los estados');
+      llenarSelectFiltro('filtroEstadoOperacion', listas.estadosOperacion, 'Todos los estados');
+
     })
 
     .withFailureHandler(function(error) {
@@ -1585,6 +1634,35 @@ function llenarSelect(id, opciones) {
   }
 
   opciones.forEach(function(opcion) {
+    const option = document.createElement('option');
+    option.value = opcion;
+    option.textContent = opcion;
+    select.appendChild(option);
+  });
+
+  if (valorActual) {
+    select.value = valorActual;
+  }
+
+}
+
+
+/**
+ * =========================================================
+ * LLENAR SELECT DE FILTRO (pestaña Consultar Operación)
+ * =========================================================
+ * Igual que llenarSelect(), pero con una opción "Todos" en vez de
+ * "Seleccione..." obligatorio — estos selects son filtros opcionales,
+ * no campos de un formulario que se vaya a guardar.
+ */
+function llenarSelectFiltro(id, opciones, etiquetaTodos) {
+
+  const select = document.getElementById(id);
+  const valorActual = select.value;
+
+  select.innerHTML = '<option value="">' + escapeHTML(etiquetaTodos) + '</option>';
+
+  (opciones || []).forEach(function(opcion) {
     const option = document.createElement('option');
     option.value = opcion;
     option.textContent = opcion;
@@ -2617,6 +2695,11 @@ function buscarConDebounceConsulta() {
 function limpiarBusquedaConsulta() {
 
   document.getElementById('consultaOs').value = '';
+  document.getElementById('filtroConductor').value = '';
+  document.getElementById('filtroPlaca').value = '';
+  document.getElementById('filtroCliente').value = '';
+  document.getElementById('filtroEstadoFacturacion').value = '';
+  document.getElementById('filtroEstadoOperacion').value = '';
   renderTablaConsulta();
 
 }
@@ -2625,21 +2708,39 @@ function limpiarBusquedaConsulta() {
 function renderTablaConsulta() {
 
   const texto = document.getElementById('consultaOs').value.trim().toLowerCase();
+  const fConductor = document.getElementById('filtroConductor').value;
+  const fPlaca = document.getElementById('filtroPlaca').value;
+  const fCliente = document.getElementById('filtroCliente').value;
+  const fEstadoFacturacion = document.getElementById('filtroEstadoFacturacion').value;
+  const fEstadoOperacion = document.getElementById('filtroEstadoOperacion').value;
+
   const cuerpo = document.getElementById('cuerpoTablaConsulta');
   const contador = document.getElementById('contadorConsulta');
 
-  const datos = !texto ? datosConsulta : datosConsulta.filter(function(fila) {
-    return [fila[1], fila[4], fila[7], fila[8]].some(function(valor) {
-      return (valor || '').toString().toLowerCase().indexOf(texto) !== -1;
+  let datos = datosConsulta;
+
+  if (texto) {
+    datos = datos.filter(function(fila) {
+      return [fila[1], fila[4], fila[7], fila[8]].some(function(valor) {
+        return (valor || '').toString().toLowerCase().indexOf(texto) !== -1;
+      });
     });
-  });
+  }
+
+  if (fConductor) datos = datos.filter(function(fila) { return (fila[8] || '') === fConductor; });
+  if (fPlaca) datos = datos.filter(function(fila) { return (fila[4] || '') === fPlaca; });
+  if (fCliente) datos = datos.filter(function(fila) { return (fila[7] || '') === fCliente; });
+  if (fEstadoFacturacion) datos = datos.filter(function(fila) { return (fila[2] || '') === fEstadoFacturacion; });
+  if (fEstadoOperacion) datos = datos.filter(function(fila) { return (fila[3] || '') === fEstadoOperacion; });
+
+  const hayFiltrosActivos = !!(texto || fConductor || fPlaca || fCliente || fEstadoFacturacion || fEstadoOperacion);
 
   cuerpo.innerHTML = '';
 
   if (!datos.length) {
     cuerpo.innerHTML = '<tr><td colspan="10" class="empty">' +
-      (texto
-        ? 'No se encontraron operaciones que coincidan con "' + escapeHTML(texto) + '".'
+      (hayFiltrosActivos
+        ? 'No se encontraron operaciones que coincidan con el texto y/o los filtros seleccionados.'
         : 'No hay operaciones registradas.') +
       '</td></tr>';
     contador.textContent = '';
@@ -2676,7 +2777,7 @@ function renderTablaConsulta() {
   });
 
   contador.textContent = datos.length + (datos.length === 1 ? ' resultado' : ' resultados') +
-    (texto ? ' (de ' + datosConsulta.length + ' en total)' : '');
+    (hayFiltrosActivos ? ' (de ' + datosConsulta.length + ' en total)' : '');
 
 }
 
