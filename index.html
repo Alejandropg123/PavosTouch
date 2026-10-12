@@ -2,333 +2,351 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#111214">
 <title>Asociación de Ganaderos TOUCH · Dragopavos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Lato:wght@400;700&display=swap" rel="stylesheet">
 <!-- Firebase (solo se usa cuando este archivo se aloja fuera de Claude, ver bloque FIREBASE SHIM abajo) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
+  /* Paleta APG GENESIS: negro grafito, carbón, verde impulso como acento, gris humo de fondo */
   :root{
-    --bg:#f2faf6;
-    --surface:#ffffff;
-    --surface-2:#eaf7f0;
-    --line:rgba(31,43,35,.10);
-    --ink:#1f2b23;
-    --ink-soft:#5b6b62;
-
-    --esmeralda:#16a34a;
-    --turquesa:#0e9aa0;
-    --indigo:#4f46e5;
-    --dorado:#f0b301;
-    --purpura:#9333ea;
-    --orquideo:#e453b0;
-    --pelirrojo:#f0653d;
-    --ciruela:#7c3a8c;
-    --almendrado:#c08552;
-    --ebano:#2e2a26;
-    --marfil:#c9bc98;
-
-    --ok:#178a4c;
-    --warn:#c2660f;
-    --shadow: 0 1px 0 rgba(31,43,35,.04), 0 10px 24px -16px rgba(31,43,35,.35);
+    --bg:#F1F2F2;
+    --surface:#FFFFFF;
+    --surface-2:#F6F7F7;
+    --line:#DADCDD;
+    --line-soft:#E8EAEA;
+    --ink:#111214;
+    --ink-2:#2A2D31;
+    --ink-soft:#5B6068;
+    --green:#14C47F;
+    --green-ink:#0B8A56;
+    --green-dark-bg:#2EE59D;
+    --green-tint:#E2F6EC;
+    --warn:#A8520C;
+    --warn-tint:#FCEFE2;
+    --star:#D4A20A;
+    --shadow:0 1px 2px rgba(17,18,20,.05), 0 10px 24px -20px rgba(17,18,20,.45);
+    --f-t:'Montserrat', system-ui, -apple-system, sans-serif;
+    --f-b:'Lato', system-ui, -apple-system, sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
+  [hidden]{display:none !important;}
   body{
     background:var(--bg);
     color:var(--ink);
-    font-family:'Inter',sans-serif;
+    font-family:var(--f-b);
+    font-size:15px;
+    line-height:1.45;
     min-height:100vh;
+    -webkit-text-size-adjust:100%;
   }
-  .wrap{max-width:1080px;margin:0 auto;padding:20px 20px 60px;}
+  body.no-scroll{overflow:hidden;}
+  .wrap{max-width:1080px;margin:0 auto;padding:16px 16px 72px;}
+  button{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px;}
 
-  /* ---------- Header ---------- */
+  /* ---------- Encabezado ---------- */
   .banner{
-    background:linear-gradient(135deg, #222222 0%, #101010 100%);
-    border-left:4px solid #B01E28;
-    border-radius:20px;
-    padding:40px 48px;
+    background:var(--ink);
+    border-radius:16px;
+    padding:28px 32px;
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:18px;
+    gap:16px;
     box-shadow:var(--shadow);
-    position:relative;
-    overflow:hidden;
   }
+  .banner-text{min-width:0;}
   .banner-text h1{
-    font-family:Georgia, 'Times New Roman', serif;
-    font-weight:700;
-    font-size:clamp(28px, 4vw, 44px);
+    font-family:var(--f-t);
+    font-weight:800;
+    font-size:clamp(22px, 4.6vw, 36px);
     color:#FFFFFF;
-    line-height:1.1;
+    line-height:1.15;
     margin:0;
+    text-wrap:balance;
   }
   .banner-text .subtitle{
-    font-family:'Courier New', monospace;
-    letter-spacing:0.5px;
-    font-size:clamp(13px, 1.4vw, 16px);
-    color:#D05A52;
-    margin-top:14px;
-    margin-bottom:0;
+    font-family:var(--f-t);
+    font-weight:600;
+    letter-spacing:.14em;
+    font-size:12px;
+    color:var(--green-dark-bg);
+    margin:12px 0 0;
   }
-  .underline{
-    width:36px; height:3px;
-    background:#B01E28;
-    margin-top:12px;
-  }
-  .plume{
-    flex:0 0 auto; width:110px; height:110px;
-  }
-  .plume img{
-    width:100%; height:100%;
-    object-fit:contain;
-    display:block;
-  }
-  .signature{
-    text-align:center;
-    margin-top:26px;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
-    letter-spacing:.6px;
-    color:var(--ink-soft);
-  }
-  .signature strong{ color:var(--ink); }
+  .underline{width:36px;height:3px;background:var(--green);margin-top:12px;border-radius:2px;}
+  .plume{flex:0 0 auto;width:96px;height:96px;}
+  .plume img{width:100%;height:100%;object-fit:contain;display:block;}
 
-  /* ---------- Tabs ---------- */
+  /* ---------- Pestañas ---------- */
   .tabs{
-    display:flex;
-    gap:8px;
-    margin:22px 0 0;
-    padding:0 2px;
+    position:sticky;
+    top:env(safe-area-inset-top, 0px);
+    z-index:20;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0,1fr));
+    gap:4px;
+    margin:16px 0 0;
+    padding:4px;
+    background:var(--surface);
+    border:1px solid var(--line-soft);
+    border-radius:12px;
+    box-shadow:var(--shadow);
   }
   .tab-btn{
-    font-family:'Fraunces',serif;
-    font-weight:600;
-    font-size:14.5px;
-    background:var(--surface);
+    font-family:var(--f-t);
+    font-weight:700;
+    font-size:14px;
+    min-height:44px;
+    background:transparent;
     color:var(--ink-soft);
-    border:1px solid var(--line);
-    padding:10px 20px;
-    border-radius:10px;
+    border:0;
+    border-radius:9px;
     cursor:pointer;
-    transition:background .15s, color .15s, transform .1s, box-shadow .15s;
+    transition:background .15s, color .15s;
   }
-  .tab-btn:hover{ transform:translateY(-1px); box-shadow:var(--shadow); }
-  .tab-btn.active{
-    background:var(--ink);
-    color:#fff;
-    border-color:var(--ink);
-  }
-  .panel{ display:none; padding-top:20px; animation:fade .25s ease; }
-  .panel.active{ display:block; }
-  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+  .tab-btn:hover{color:var(--ink);}
+  .tab-btn.active{background:var(--ink);color:#FFFFFF;}
+  .panel{display:none;padding-top:16px;}
+  .panel.active{display:block;}
 
-  /* ---------- Cards / generic ---------- */
+  /* ---------- Tarjetas ---------- */
   .card{
     background:var(--surface);
-    border:1px solid var(--line);
+    border:1px solid var(--line-soft);
     border-radius:14px;
-    padding:18px 20px;
+    padding:16px;
     box-shadow:var(--shadow);
-    margin-bottom:18px;
-  }
-  h2.section-title{
-    font-family:'Fraunces',serif;
-    font-size:16px;
-    margin:0 0 14px;
-    color:var(--ink);
-    display:flex; align-items:center; gap:8px;
-  }
-  h2.section-title .rule{ flex:1; height:1px; background:var(--line); }
-
-  .stat-grid{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:12px;
-    margin-bottom:18px;
-  }
-  .stat{
-    background:var(--surface);
-    border:1px solid var(--line);
-    border-left:4px solid var(--esmeralda);
-    border-radius:12px;
-    padding:14px 16px;
-    box-shadow:var(--shadow);
-  }
-  .stat:nth-child(2){ border-left-color:var(--dorado); }
-  .stat:nth-child(3){ border-left-color:var(--turquesa); }
-  .stat:nth-child(4){ border-left-color:var(--indigo); }
-  .stat .num{
-    font-family:'IBM Plex Mono',monospace;
-    font-weight:600;
-    font-size:26px;
-    color:var(--ink);
-  }
-  .stat .label{
-    font-size:12px;
-    color:var(--ink-soft);
-    margin-top:2px;
-    text-transform:uppercase;
-    letter-spacing:.4px;
-  }
-
-  /* ---------- Filters ---------- */
-  .filters{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    margin-bottom:14px;
-    align-items:center;
-  }
-  select, input[type=text], input[type=number]{
-    font-family:'Inter',sans-serif;
-    font-size:13.5px;
-    padding:7px 10px;
-    border-radius:8px;
-    border:1px solid var(--line);
-    background:var(--surface-2);
-    color:var(--ink);
-  }
-  select:focus, input:focus{ outline:2px solid var(--turquesa); outline-offset:1px; }
-  label.chk{
-    display:flex; align-items:center; gap:6px;
-    font-size:13px; color:var(--ink-soft);
-    background:var(--surface-2);
-    border:1px solid var(--line);
-    padding:6px 10px; border-radius:8px;
-  }
-
-  /* ---------- Swatches ---------- */
-  .swatch{
-    display:inline-block; width:10px; height:10px; border-radius:50%;
-    margin-right:3px; border:1px solid rgba(0,0,0,.15); vertical-align:middle;
-  }
-  .breed-name{ display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap; }
-
-  /* ---------- Table ---------- */
-  .table-scroll{ overflow-x:auto; border-radius:12px; border:1px solid var(--line); }
-  table{ width:100%; border-collapse:collapse; font-size:13px; background:var(--surface); min-width:640px; }
-  thead th{
-    text-align:left;
-    font-family:'IBM Plex Mono',monospace;
-    font-weight:600;
-    font-size:11px;
-    letter-spacing:.4px;
-    text-transform:uppercase;
-    color:#fff;
-    background:var(--ink);
-    padding:9px 12px;
-    position:sticky; top:0;
-  }
-  thead th.sortable{ cursor:pointer; user-select:none; }
-  thead th.sortable:hover{ background:var(--esmeralda); }
-  tbody td{ padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:middle; }
-  tbody tr:hover{ background:var(--surface-2); }
-  .star-btn{
-    background:none; border:none; cursor:pointer; font-size:16px; line-height:1;
-    color:#d8dcd6; padding:2px;
-  }
-  .star-btn.active{ color:var(--dorado); }
-  .pill{
-    display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600;
-    font-family:'IBM Plex Mono',monospace;
-  }
-  .pill.ok{ background:rgba(23,138,76,.12); color:var(--ok); }
-  .pill.warn{ background:rgba(194,102,15,.12); color:var(--warn); }
-  .pareja-toggle-btn{
-    display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600;
-    font-family:'IBM Plex Mono',monospace; cursor:pointer; border:1px solid transparent;
-  }
-  .pareja-toggle-btn.ok{ background:rgba(23,138,76,.12); color:var(--ok); }
-  .pareja-toggle-btn.ok:hover{ border-color:var(--ok); }
-  .pareja-toggle-btn.warn{ background:rgba(194,102,15,.12); color:var(--warn); }
-  .pareja-toggle-btn.warn:hover{ border-color:var(--warn); }
-
-  /* ---------- Alert ---------- */
-  .alert{
-    background:rgba(194,102,15,.10);
-    border:1px solid rgba(194,102,15,.3);
-    color:var(--warn);
-    border-radius:12px;
-    padding:12px 16px;
-    font-size:13.5px;
     margin-bottom:16px;
   }
-  .alert strong{ color:#a35012; }
+  h2.section-title{
+    font-family:var(--f-t);
+    font-weight:700;
+    font-size:15px;
+    margin:0 0 12px;
+    color:var(--ink);
+    display:flex;align-items:center;gap:10px;
+  }
+  h2.section-title .rule{flex:1;height:1px;background:var(--line-soft);}
 
-  /* ---------- Parejas controls ---------- */
-  .estado-select{ min-width:150px; }
-  .notas-input{ width:100%; min-width:120px; }
-  .price-input{ width:90px; }
-  .cantidad-input{ width:64px; }
-  .inv-group{ display:flex; align-items:center; gap:6px; }
-  .inv-group label{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); }
-  .inv-input{ width:48px; }
-  .summary-badges{ display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
-  .badge{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:12px;
-    padding:6px 12px;
-    border-radius:8px;
+  .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px;}
+  .stat{
+    background:var(--surface);
+    border:1px solid var(--line-soft);
+    border-radius:12px;
+    padding:12px 14px;
+    box-shadow:var(--shadow);
+  }
+  .stat .num{font-family:var(--f-t);font-weight:800;font-size:22px;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .stat:first-child .num{color:var(--green-ink);}
+  .stat .label{font-size:11px;color:var(--ink-soft);margin-top:2px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+
+  /* ---------- Buscador, filtros y columnas ---------- */
+  .toolbar{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;}
+  .search{flex:1 1 220px;min-width:0;}
+  select, input[type=text], input[type=search], input[type=number], textarea{
+    font-family:var(--f-b);
+    font-size:16px;
+    min-height:40px;
+    padding:8px 10px;
+    border-radius:9px;
+    border:1px solid var(--line);
+    background:var(--surface-2);
+    color:var(--ink);
+    max-width:100%;
+  }
+  input[type=search]{min-height:44px;width:100%;}
+  textarea{width:100%;resize:vertical;line-height:1.4;}
+  select:focus, input:focus, textarea:focus{outline:2px solid var(--green);outline-offset:0;border-color:var(--green);}
+  select:disabled, input:disabled{opacity:.45;}
+  details.more-filters{flex:0 0 auto;}
+  details.more-filters > summary{
+    list-style:none;
+    cursor:pointer;
+    min-height:44px;
+    display:inline-flex;align-items:center;gap:6px;
+    padding:0 14px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:var(--surface);
+    font-weight:700;font-size:14px;color:var(--ink-2);
+  }
+  details.more-filters > summary::-webkit-details-marker{display:none;}
+  details.more-filters > summary b{
+    background:var(--ink);color:#FFFFFF;border-radius:999px;font-size:11px;min-width:18px;height:18px;
+    display:inline-grid;place-items:center;padding:0 5px;
+  }
+  details.more-filters[open]{flex-basis:100%;}
+  details.more-filters[open] > summary{background:var(--ink);color:#FFFFFF;border-color:var(--ink);}
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
+  .filters select{flex:1 1 160px;}
+  label.chk{
+    display:flex;align-items:center;gap:8px;
+    font-size:14px;color:var(--ink-2);
     background:var(--surface-2);
     border:1px solid var(--line);
+    min-height:40px;padding:0 12px;border-radius:9px;cursor:pointer;
   }
+  label.chk input{width:18px;height:18px;accent-color:var(--green-ink);}
+
+  .col-picker{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 12px;}
+  .col-picker-l{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-right:2px;}
+  .chip{
+    min-height:34px;padding:0 12px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+    font-size:13px;font-weight:700;cursor:pointer;
+  }
+  .chip:hover{border-color:var(--ink-2);}
+  .chip.on{background:var(--ink-2);border-color:var(--ink-2);color:#FFFFFF;}
+  .count{font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;font-variant-numeric:tabular-nums;}
+
+  /* ---------- Tablas ---------- */
+  .swatch{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);flex:0 0 auto;}
+  .breed-name{display:inline-flex;align-items:center;gap:4px;min-width:0;}
+  .breed-name > span:last-of-type{margin-left:4px;min-width:0;}
+  #app{margin-top:12px;}
+  .table-scroll{overflow-x:auto;border-radius:12px;border:1px solid var(--line-soft);}
+  table{width:100%;border-collapse:collapse;font-size:14px;background:var(--surface);}
+  thead th{
+    text-align:left;
+    font-family:var(--f-t);
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:#FFFFFF;
+    background:var(--ink-2);
+    padding:10px 12px;
+    white-space:nowrap;
+  }
+  thead th.sortable{cursor:pointer;user-select:none;}
+  thead th.sortable:hover{background:var(--green-ink);}
+  tbody td{padding:8px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:0;}
+  tbody tr:hover{background:var(--surface-2);}
+  td.num, th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .breed-btn{
+    display:flex;align-items:center;gap:8px;width:100%;min-height:40px;
+    background:none;border:0;padding:0;margin:0;cursor:pointer;
+    font:inherit;font-weight:700;color:var(--ink);text-align:left;
+  }
+  .breed-btn .chev{margin-left:auto;color:var(--ink-soft);font-size:18px;line-height:1;padding-left:6px;}
+  .breed-btn:hover .chev{color:var(--green-ink);}
+  .tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--warn);background:var(--warn-tint);border-radius:999px;padding:2px 7px;}
+  .star-btn{background:none;border:none;cursor:pointer;font-size:20px;line-height:1;color:#C9CCCE;min-width:40px;min-height:40px;}
+  .star-btn.active{color:var(--star);}
+  .pareja-toggle-btn{
+    display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;
+    cursor:pointer;border:1px solid transparent;white-space:nowrap;
+  }
+  .pareja-toggle-btn.ok{background:var(--green-tint);color:var(--green-ink);}
+  .pareja-toggle-btn.ok:hover{border-color:var(--green-ink);}
+  .pareja-toggle-btn.warn{background:var(--warn-tint);color:var(--warn);}
+  .pareja-toggle-btn.warn:hover{border-color:var(--warn);}
+
+  /* ---------- Avisos y controles de Parejas ---------- */
+  .alert{
+    background:var(--warn-tint);
+    border:1px solid #F1D3B5;
+    color:var(--warn);
+    border-radius:12px;
+    padding:12px 14px;
+    font-size:14px;
+    margin-bottom:16px;
+  }
+  .estado-select{min-width:150px;}
+  .notas-input{width:100%;min-width:140px;}
+  .price-input{width:104px;}
+  .cantidad-input{width:72px;}
+  .inv-group{display:flex;align-items:center;gap:6px;}
+  .inv-group span{font-size:12px;font-weight:700;color:var(--ink-soft);}
+  .inv-input{width:60px;}
+  .summary-badges{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .badge{font-size:13px;padding:6px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line-soft);font-variant-numeric:tabular-nums;}
+  details.help{margin:0 0 12px;}
+  details.help > summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--green-ink);min-height:32px;display:inline-flex;align-items:center;}
+  details.help p{font-size:13px;color:var(--ink-soft);margin:6px 0 0;line-height:1.5;}
 
   /* ---------- Proyección ---------- */
-  .totals-row td{ font-weight:700; background:var(--surface-2); font-family:'IBM Plex Mono',monospace; }
+  .totals-row td{font-weight:800;background:var(--green-tint);color:var(--green-ink);}
   .empty-state{
-    text-align:center; padding:34px 20px; color:var(--ink-soft);
-    font-size:14px; border:1px dashed var(--line); border-radius:12px; background:var(--surface-2);
+    text-align:center;padding:28px 16px;color:var(--ink-soft);
+    font-size:14px;border:1px dashed var(--line);border-radius:12px;background:var(--surface-2);
   }
-  .formula-note{
-    font-size:12px; color:var(--ink-soft); margin-top:10px; line-height:1.5;
-    font-family:'IBM Plex Mono',monospace;
-    border-top:1px dashed var(--line); padding-top:10px;
-  }
-  .period-toggle{ display:flex; gap:6px; margin-bottom:12px; }
-  .period-btn{
-    font-family:'IBM Plex Mono',monospace; font-size:12px;
-    padding:6px 12px; border-radius:8px; border:1px solid var(--line);
-    background:var(--surface-2); color:var(--ink-soft); cursor:pointer;
-  }
-  .period-btn.active{ background:var(--esmeralda); color:#fff; border-color:var(--esmeralda); }
+  .formula-note{font-size:12.5px;color:var(--ink-soft);margin-top:10px;line-height:1.5;border-top:1px dashed var(--line);padding-top:10px;}
+  .period-toggle{display:inline-grid;grid-template-columns:repeat(3,auto);gap:4px;padding:4px;border:1px solid var(--line-soft);border-radius:10px;background:var(--surface-2);margin-bottom:12px;}
+  .period-btn{font-size:13px;font-weight:700;min-height:36px;padding:0 12px;border-radius:7px;border:0;background:transparent;color:var(--ink-soft);cursor:pointer;}
+  .period-btn.active{background:var(--ink);color:#FFFFFF;}
+  .birth-time{font-variant-numeric:tabular-nums;font-size:13.5px;}
+  .birth-soon{color:var(--green-ink);font-weight:800;}
 
-  .birth-time{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; }
-  .birth-soon{ color:var(--ok); font-weight:600; }
+  /* ---------- Ficha del dragopavo ---------- */
+  .sheet-veil{position:fixed;inset:0;background:rgba(17,18,20,.5);z-index:40;}
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:41;
+    max-height:88vh;overflow-y:auto;
+    background:var(--surface);
+    border-radius:18px 18px 0 0;
+    padding:18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    box-shadow:0 -12px 40px rgba(17,18,20,.25);
+    display:grid;gap:14px;
+  }
+  .sheet-head{display:flex;align-items:flex-start;gap:12px;}
+  .sheet-head > div{flex:1;min-width:0;}
+  .sheet-name{font-family:var(--f-t);font-weight:800;font-size:18px;line-height:1.25;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  .sheet-sub{font-size:13px;color:var(--ink-soft);margin-top:4px;}
+  .sheet-x{flex:0 0 auto;width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:22px;line-height:1;cursor:pointer;color:var(--ink-2);}
+  .sheet-toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .tgl{min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:14px;color:var(--ink-2);cursor:pointer;}
+  .tgl.on{background:var(--ink);border-color:var(--ink);color:#FFFFFF;}
+  .tgl.on.fav{background:var(--star);border-color:var(--star);color:var(--ink);}
+  .fld{display:grid;gap:6px;min-width:0;}
+  .fld > span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);}
+  .fld select, .fld input{width:100%;min-height:44px;}
+  .fld-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .sheet-info{margin:0;font-size:14px;color:var(--ink-2);background:var(--surface-2);border-radius:10px;padding:10px 12px;}
+  .sheet-info strong{color:var(--green-ink);}
 
+  /* ---------- Avisos generales ---------- */
   .toast{
-    position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
-    background:var(--ink); color:#fff; padding:10px 18px;
-    border-radius:10px; font-size:13px; box-shadow:0 8px 24px rgba(0,0,0,.25);
-    opacity:0; pointer-events:none; transition:opacity .25s;
-    font-family:'Inter',sans-serif;
+    position:fixed;bottom:calc(18px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#FFFFFF;padding:10px 18px;z-index:60;
+    border-radius:10px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);
+    opacity:0;pointer-events:none;transition:opacity .25s;max-width:calc(100vw - 32px);
   }
-  .toast.show{ opacity:1; }
-
-  .loading{ text-align:center; padding:60px 20px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
-
-  .storage-status{
-    font-family:'IBM Plex Mono',monospace; font-size:12px;
-    padding:10px 14px; border-radius:10px; margin-bottom:16px;
-  }
-  .storage-status.ok{ background:rgba(23,138,76,.10); color:var(--ok); border:1px solid rgba(23,138,76,.25); }
-  .storage-status.warn{ background:rgba(194,102,15,.10); color:var(--warn); border:1px solid rgba(194,102,15,.3); }
-
-  footer.reset-row{ display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
-  .reset-btn{
-    font-family:'IBM Plex Mono',monospace; font-size:11.5px;
-    background:none; border:1px solid var(--line); color:var(--ink-soft);
-    padding:6px 12px; border-radius:8px; cursor:pointer;
-  }
-  .reset-btn:hover{ border-color:var(--pelirrojo); color:var(--pelirrojo); }
+  .toast.show{opacity:1;}
+  .loading{text-align:center;padding:60px 20px;color:var(--ink-soft);}
+  .storage-status{font-size:13px;padding:8px 12px;border-radius:10px;margin-bottom:12px;}
+  .storage-status.ok{background:var(--green-tint);color:var(--green-ink);border:1px solid #BFE8D4;}
+  .storage-status.warn{background:var(--warn-tint);color:var(--warn);border:1px solid #F1D3B5;}
+  footer.reset-row{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:6px;}
+  .reset-btn{font-size:13px;font-weight:700;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);min-height:40px;padding:0 14px;border-radius:9px;cursor:pointer;}
+  .reset-btn:hover{border-color:var(--ink-2);}
+  #reset-btn:hover{border-color:var(--warn);color:var(--warn);}
+  .signature{text-align:center;margin-top:26px;font-size:12px;letter-spacing:.04em;color:var(--ink-soft);}
+  .signature strong{color:var(--ink);}
 
   @media (max-width:720px){
-    .stat-grid{ grid-template-columns:repeat(2,1fr); }
-    .banner{ flex-direction:column; align-items:flex-start; }
-    .plume{ align-self:flex-end; }
+    .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .banner{padding:20px;}
+    .plume{width:60px;height:60px;}
+    .card{padding:14px 12px;}
+    tbody td{padding:6px 10px;}
+    thead th{padding:9px 10px;}
+    .col-picker{flex-wrap:nowrap;overflow-x:auto;margin-left:-12px;margin-right:-12px;padding:0 12px 4px;scrollbar-width:none;}
+    .col-picker::-webkit-scrollbar{display:none;}
+    .chip{flex:0 0 auto;}
+    .badge{font-size:12.5px;padding:5px 9px;}
+  }
+  @media (min-width:721px){
+    .sheet{left:50%;right:auto;bottom:24px;width:520px;transform:translateX(-50%);border-radius:18px;max-height:calc(100vh - 48px);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;}
   }
 </style>
 </head>
@@ -609,6 +627,64 @@ document.getElementById("tabs").addEventListener("click", (e)=>{
 });
 
 /* ============================================================
+   COLUMNAS VISIBLES Y FILTROS (preferencia de cada navegador)
+   Por defecto cada tabla muestra solo el nombre y el tiempo;
+   las demás columnas se agregan con los botones "Columnas".
+   ============================================================ */
+const COLS = {
+  razas:   [{k:"ciclo",l:"Ciclo"},{k:"linea",l:"Línea"},{k:"atributo",l:"Atributo"},{k:"cert",l:"Certificado"},{k:"pareja",l:"Pareja"},{k:"fav",l:"Favorita"}],
+  parejas: [{k:"ciclo",l:"Ciclo"},{k:"estado",l:"Estado"},{k:"atributo",l:"Atributo"},{k:"cert",l:"Certificado"},{k:"hembras",l:"Hembras en cría"},{k:"inv",l:"Inventario H/M"},{k:"precio",l:"Precio/cría"},{k:"notas",l:"Notas"}],
+  resumen: [{k:"ingreso",l:"Ingreso"},{k:"crias",l:"Crías"},{k:"parejas",l:"Parejas"},{k:"ciclo",l:"Ciclo"},{k:"ciclosSem",l:"Ciclos/sem"}],
+  nac:     [{k:"nace",l:"Nace aprox."},{k:"linea",l:"Línea"},{k:"horas",l:"Gestación"},{k:"inicio",l:"Inicio"},{k:"precio",l:"Precio/cría"}]
+};
+const COLS_DEF = { razas:["ciclo"], parejas:["ciclo"], resumen:["ingreso"], nac:["nace"] };
+const colsOn = {};
+Object.keys(COLS).forEach(t=>{
+  let v = null;
+  try{ v = JSON.parse(localStorage.getItem("pt_cols_"+t)); }catch(e){}
+  colsOn[t] = Array.isArray(v) ? v.filter(k=>COLS[t].some(c=>c.k===k)) : COLS_DEF[t].slice();
+});
+function on(t,k){ return colsOn[t].includes(k); }
+function guardarCols(t){ try{ localStorage.setItem("pt_cols_"+t, JSON.stringify(colsOn[t])); }catch(e){} }
+function colsVisibles(t){ return COLS[t].filter(c=>on(t,c.k)); }
+function colPicker(t){
+  return `<div class="col-picker" data-t="${t}"><span class="col-picker-l">Columnas</span>${
+    COLS[t].map(c=>`<button type="button" class="chip ${on(t,c.k)?'on':''}" data-col="${c.k}" aria-pressed="${on(t,c.k)}">${on(t,c.k)?'✓':'+'} ${c.l}</button>`).join("")
+  }</div>`;
+}
+const filtrosAbiertos = { razas:false, parejas:false };
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function pesos(n){ return "$" + Number(n||0).toLocaleString("es-CO", {maximumFractionDigits:0}); }
+function nombreBtn(d, extra){
+  return `<button type="button" class="breed-btn" data-open="${d.id}"><span class="breed-name">${colorDots(d.tipo)}<span>${d.tipo}</span>${extra||""}</span><span class="chev" aria-hidden="true">›</span></button>`;
+}
+function rerenderTodo(){ renderRazas(); renderParejas(); renderProyeccion(); }
+/** Re-pinta sin quitarle el cursor al buscador (en el celular no vuelve a abrir el teclado). */
+function conservarFoco(fn){
+  const a = document.activeElement, id = a && a.id;
+  let pos = null; try{ pos = a.selectionStart; }catch(e){}
+  fn();
+  if(id){
+    const n = document.getElementById(id);
+    if(n && n !== document.activeElement){ n.focus(); try{ if(pos!=null) n.setSelectionRange(pos,pos); }catch(e){} }
+  }
+}
+
+document.addEventListener("click", e=>{
+  const chip = e.target.closest(".col-picker .chip");
+  if(chip){
+    const t = chip.closest(".col-picker").dataset.t, k = chip.dataset.col;
+    colsOn[t] = on(t,k) ? colsOn[t].filter(x=>x!==k) : COLS[t].map(c=>c.k).filter(x=>x===k || on(t,x));
+    guardarCols(t);
+    if(t==="razas") renderRazas(); else if(t==="parejas") renderParejas(); else renderProyeccion();
+    return;
+  }
+  const ab = e.target.closest("[data-open]");
+  if(ab){ abrirFicha(ab.dataset.open); }
+});
+
+/* ============================================================
    RENDER: RAZAS
    ============================================================ */
 let razaFilters = { gen:"", atributo:"", certificado:"", favorito:false, q:"" };
@@ -636,14 +712,28 @@ function renderRazasStats(){
 }
 
 function filteredRazas(){
+  const q = razaFilters.q.trim().toLowerCase();
   return DATA.filter(d=>{
     if(razaFilters.gen && String(d.gen) !== razaFilters.gen) return false;
     if(razaFilters.atributo && d.atributo !== razaFilters.atributo) return false;
     if(razaFilters.certificado && d.tamano !== razaFilters.certificado) return false;
     if(razaFilters.favorito && !isFavorito(d)) return false;
-    if(razaFilters.q && !d.tipo.toLowerCase().includes(razaFilters.q.toLowerCase())) return false;
+    if(q && !d.tipo.toLowerCase().includes(q)) return false;
     return true;
   });
+}
+
+const RAZA_SORT = { ciclo:"tiempo", linea:"gen", atributo:"atributo", cert:"tamano" };
+function razaCelda(d, k){
+  switch(k){
+    case "ciclo": return `<td class="num">${d.tiempo} h</td>`;
+    case "linea": return `<td>G${d.gen}</td>`;
+    case "atributo": return `<td>${d.atributo}</td>`;
+    case "cert": return `<td>${d.tamano}</td>`;
+    case "pareja": return `<td><button type="button" class="pareja-toggle-btn ${isCompleta(d)?'ok':'warn'}" data-id="${d.id}" title="Marcar como completa o incompleta">${isCompleta(d) ? 'Completa' : 'Incompleta'}</button></td>`;
+    case "fav": { const fav = isFavorito(d); return `<td><button type="button" class="star-btn ${fav?'active':''}" data-id="${d.id}" aria-label="${fav?'Quitar de favoritas':'Marcar como favorita'}">&#9733;</button></td>`; }
+  }
+  return "<td></td>";
 }
 
 function renderRazasTable(){
@@ -655,28 +745,18 @@ function renderRazasTable(){
       return String(va).localeCompare(String(vb), 'es') * razaSort.dir;
     });
   }
-  const rows = list.map(d=>{
-    const fav = isFavorito(d);
-    return `<tr>
-      <td><span class="breed-name">${colorDots(d.tipo)} ${d.tipo}</span></td>
-      <td>G${d.gen}</td>
-      <td>${d.atributo}</td>
-      <td>${d.tamano}</td>
-      <td>${d.tiempo} h</td>
-      <td><button class="pareja-toggle-btn ${isCompleta(d)?'ok':'warn'}" data-id="${d.id}" title="Clic para marcar como completa/incompleta">${isCompleta(d) ? 'Completa' : 'Incompleta'}</button></td>
-      <td><button class="star-btn ${fav?'active':''}" data-id="${d.id}" title="Marcar/quitar favorito">&#9733;</button></td>
-    </tr>`;
+  const cols = colsVisibles("razas");
+  const head = `<th>Dragopavo</th>` + cols.map(c=>{
+    const f = RAZA_SORT[c.k], num = c.k==="ciclo" ? " num" : "";
+    return f ? `<th class="sortable${num}" data-sort="${f}">${c.l}${razaSortIcon(f)}</th>` : `<th>${c.l}</th>`;
   }).join("");
+  const rows = list.map(d=>`<tr><td>${nombreBtn(d)}</td>${cols.map(c=>razaCelda(d,c.k)).join("")}</tr>`).join("");
   return `
+  <p class="count">${list.length} de ${DATA.length} dragopavos · toca uno para ver y editar su ficha</p>
   <div class="table-scroll">
   <table>
-    <thead><tr>
-      <th>Raza</th>
-      <th class="sortable" data-sort="gen">Línea${razaSortIcon('gen')}</th>
-      <th class="sortable" data-sort="atributo">Atributo${razaSortIcon('atributo')}</th>
-      <th>Certificado</th><th>Ciclo</th><th>Pareja</th><th>Fav.</th>
-    </tr></thead>
-    <tbody>${rows || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--ink-soft)">No hay razas que coincidan con el filtro.</td></tr>'}</tbody>
+    <thead><tr>${head}</tr></thead>
+    <tbody>${rows || `<tr><td colspan="${cols.length+1}" style="text-align:center;padding:20px;color:var(--ink-soft)">No hay dragopavos que coincidan con la búsqueda.</td></tr>`}</tbody>
   </table>
   </div>`;
 }
@@ -685,26 +765,36 @@ function renderRazasFilters(){
   const gens = [...new Set(DATA.map(d=>d.gen))].sort((a,b)=>a-b);
   const attrs = [...new Set(DATA.map(d=>d.atributo))].sort();
   const certs = [...new Set(DATA.map(d=>d.tamano))].sort();
+  const activos = [razaFilters.gen, razaFilters.atributo, razaFilters.certificado, razaFilters.favorito].filter(Boolean).length;
   return `
-  <div class="filters">
-    <select id="f-gen"><option value="">Todas las líneas</option>${gens.map(g=>`<option value="${g}" ${razaFilters.gen===String(g)?'selected':''}>Generación ${g}</option>`).join("")}</select>
-    <select id="f-attr"><option value="">Todos los atributos</option>${attrs.map(a=>`<option value="${a}" ${razaFilters.atributo===a?'selected':''}>${a}</option>`).join("")}</select>
-    <select id="f-cert"><option value="">Todos los certificados</option>${certs.map(c=>`<option value="${c}" ${razaFilters.certificado===c?'selected':''}>${c}</option>`).join("")}</select>
-    <label class="chk"><input type="checkbox" id="f-fav" ${razaFilters.favorito?'checked':''}> Solo favoritas</label>
-    <input type="text" id="f-q" placeholder="Buscar raza..." value="${razaFilters.q}">
+  <div class="toolbar">
+    <div class="search"><input type="search" id="f-q" placeholder="Buscar dragopavo…" aria-label="Buscar dragopavo" value="${esc(razaFilters.q)}"></div>
+    <details class="more-filters" id="fd-razas" ${filtrosAbiertos.razas?'open':''}>
+      <summary>Filtros${activos?` <b>${activos}</b>`:''}</summary>
+      <div class="filters">
+        <select id="f-gen" aria-label="Línea"><option value="">Todas las líneas</option>${gens.map(g=>`<option value="${g}" ${razaFilters.gen===String(g)?'selected':''}>Generación ${g}</option>`).join("")}</select>
+        <select id="f-attr" aria-label="Atributo"><option value="">Todos los atributos</option>${attrs.map(a=>`<option value="${a}" ${razaFilters.atributo===a?'selected':''}>${a}</option>`).join("")}</select>
+        <select id="f-cert" aria-label="Certificado"><option value="">Todos los certificados</option>${certs.map(c=>`<option value="${c}" ${razaFilters.certificado===c?'selected':''}>${c}</option>`).join("")}</select>
+        <label class="chk"><input type="checkbox" id="f-fav" ${razaFilters.favorito?'checked':''}> Solo favoritas</label>
+      </div>
+    </details>
   </div>`;
 }
 
 function renderRazas(){
   const el = document.getElementById("panel-razas");
-  el.innerHTML = `
-    ${renderRazasStats()}
-    <div class="card">
-      <h2 class="section-title">Inventario de razas <span class="rule"></span></h2>
-      ${renderRazasFilters()}
-      ${renderRazasTable()}
-    </div>`;
+  conservarFoco(()=>{
+    el.innerHTML = `
+      ${renderRazasStats()}
+      <div class="card">
+        <h2 class="section-title">Inventario de razas <span class="rule"></span></h2>
+        ${renderRazasFilters()}
+        ${colPicker("razas")}
+        ${renderRazasTable()}
+      </div>`;
+  });
 
+  document.getElementById("fd-razas").addEventListener("toggle", e=>{ filtrosAbiertos.razas = e.target.open; });
   document.getElementById("f-gen").addEventListener("change", e=>{ razaFilters.gen=e.target.value; renderRazas(); });
   document.getElementById("f-attr").addEventListener("change", e=>{ razaFilters.atributo=e.target.value; renderRazas(); });
   document.getElementById("f-cert").addEventListener("change", e=>{ razaFilters.certificado=e.target.value; renderRazas(); });
@@ -736,14 +826,10 @@ function renderRazas(){
       const d = DATA.find(x=>x.id===id);
       completos[id] = !isCompleta(d);
       await saveCompletos();
-      renderRazas();
+      rerenderTodo();
       showToast(completos[id] ? "Marcada como completa" : "Marcada como incompleta");
     });
   });
-
-  const q = document.getElementById("f-q");
-  q.focus();
-  q.setSelectionRange(razaFilters.q.length, razaFilters.q.length);
 }
 
 /* ============================================================
@@ -753,6 +839,7 @@ let mostrarIncompletas = false;
 let soloEnApareamiento = false;
 let parejaAtributo = "";
 let parejaCertificado = "";
+let parejaQ = "";
 let parejaSort = { field:null, dir:1 };
 
 function getCantidad(id){
@@ -773,6 +860,38 @@ function sortIcon(field){
   return parejaSort.dir === 1 ? " &#9650;" : " &#9660;";
 }
 
+/* Cambios de una pareja (los usan la tabla y la ficha) */
+async function cambiarEstado(id, nuevoEstado){
+  const current = getPairState(id);
+  let inicio = current.inicio || null;
+  if(nuevoEstado === "en_apareamiento" && current.estado !== "en_apareamiento"){
+    inicio = Date.now();
+  }
+  pairStates[id] = { ...current, estado: nuevoEstado, inicio };
+  await savePairStates();
+  showToast("Estado actualizado");
+}
+async function cambiarPar(id, campo, valor){
+  pairStates[id] = { ...getPairState(id), [campo]: valor };
+  await savePairStates();
+}
+
+const PAREJA_SORT = { ciclo:"tiempo", atributo:"atributo", cert:"tamano" };
+function parejaCelda(d, k, disabled){
+  const state = getPairState(d.id);
+  switch(k){
+    case "ciclo": return `<td class="num">${d.tiempo} h</td>`;
+    case "atributo": return `<td>${d.atributo}</td>`;
+    case "cert": return `<td>${d.tamano}</td>`;
+    case "estado": return `<td><select class="estado-select" data-id="${d.id}" aria-label="Estado de apareamiento" ${disabled}>${ESTADOS.map(s=>`<option value="${s.v}" ${state.estado===s.v?'selected':''}>${s.label}</option>`).join("")}</select></td>`;
+    case "hembras": return `<td><input type="number" inputmode="numeric" min="0" step="1" class="cantidad-input" data-id="${d.id}" aria-label="Hembras en cría" value="${getCantidad(d.id)}" ${disabled}></td>`;
+    case "inv": return `<td><div class="inv-group"><span>H</span><input type="number" inputmode="numeric" min="0" step="1" class="inv-input inv-h" data-id="${d.id}" aria-label="Inventario hembras" value="${getTotalH(d.id)}" ${disabled}><span>M</span><input type="number" inputmode="numeric" min="0" step="1" class="inv-input inv-m" data-id="${d.id}" aria-label="Inventario machos" value="${getTotalM(d.id)}" ${disabled}></div></td>`;
+    case "precio": return `<td><input type="number" inputmode="numeric" min="0" step="1" class="price-input" data-id="${d.id}" aria-label="Precio por cría" value="${getPrecio(d.id)}" ${disabled}></td>`;
+    case "notas": return `<td><input type="text" class="notas-input" data-id="${d.id}" aria-label="Notas" placeholder="Notas…" value="${esc(state.notas)}" ${disabled}></td>`;
+  }
+  return "<td></td>";
+}
+
 function renderParejas(){
   const el = document.getElementById("panel-parejas");
   const completas = DATA.filter(isCompleta);
@@ -785,12 +904,10 @@ function renderParejas(){
   if(soloEnApareamiento){
     list = list.filter(d=>isCompleta(d) && getPairState(d.id).estado === "en_apareamiento");
   }
-  if(parejaAtributo){
-    list = list.filter(d=>d.atributo === parejaAtributo);
-  }
-  if(parejaCertificado){
-    list = list.filter(d=>d.tamano === parejaCertificado);
-  }
+  if(parejaAtributo){ list = list.filter(d=>d.atributo === parejaAtributo); }
+  if(parejaCertificado){ list = list.filter(d=>d.tamano === parejaCertificado); }
+  const q = parejaQ.trim().toLowerCase();
+  if(q){ list = list.filter(d=>d.tipo.toLowerCase().includes(q)); }
   if(parejaSort.field){
     list = [...list].sort((a,b)=>{
       const va = a[parejaSort.field], vb = b[parejaSort.field];
@@ -799,83 +916,65 @@ function renderParejas(){
     });
   }
 
+  const cols = colsVisibles("parejas");
+  const head = `<th>Dragopavo</th>` + cols.map(c=>{
+    const f = PAREJA_SORT[c.k], num = c.k==="ciclo" ? " num" : "";
+    return f ? `<th class="sortable${num}" data-sort="${f}">${c.l}${sortIcon(f)}</th>` : `<th>${c.l}</th>`;
+  }).join("");
   const rows = list.map(d=>{
-    const state = getPairState(d.id);
     const disabled = !isCompleta(d) ? "disabled" : "";
-    return `<tr data-id="${d.id}">
-      <td><span class="breed-name">${colorDots(d.tipo)} ${d.tipo}</span></td>
-      <td>${d.atributo}</td>
-      <td>${d.tamano}</td>
-      <td>
-        <select class="estado-select" data-id="${d.id}" ${disabled}>
-          ${ESTADOS.map(s=>`<option value="${s.v}" ${state.estado===s.v?'selected':''}>${s.label}</option>`).join("")}
-        </select>
-      </td>
-      <td><input type="number" min="0" step="1" class="cantidad-input" data-id="${d.id}" value="${getCantidad(d.id)}" ${disabled}></td>
-      <td>
-        <div class="inv-group">
-          <label for="">H</label><input type="number" min="0" step="1" class="inv-input inv-h" data-id="${d.id}" value="${getTotalH(d.id)}" ${disabled}>
-          <label for="">M</label><input type="number" min="0" step="1" class="inv-input inv-m" data-id="${d.id}" value="${getTotalM(d.id)}" ${disabled}>
-        </div>
-      </td>
-      <td><input type="number" min="0" step="1" class="price-input" data-id="${d.id}" value="${getPrecio(d.id)}" ${disabled}></td>
-      <td><input type="text" class="notas-input" data-id="${d.id}" placeholder="Notas..." value="${state.notas ? state.notas.replace(/"/g,'&quot;') : ''}" ${disabled}></td>
-    </tr>`;
+    const tag = !isCompleta(d) ? ` <span class="tag">incompleta</span>` : "";
+    return `<tr data-id="${d.id}"><td>${nombreBtn(d, tag)}</td>${cols.map(c=>parejaCelda(d,c.k,disabled)).join("")}</tr>`;
   }).join("");
 
   const attrs = [...new Set(DATA.map(d=>d.atributo))].sort();
   const certs = [...new Set(DATA.map(d=>d.tamano))].sort();
+  const activos = [parejaAtributo, parejaCertificado, soloEnApareamiento, mostrarIncompletas].filter(Boolean).length;
 
-  el.innerHTML = `
-    ${incompletas.length ? `<div class="alert"><strong>${incompletas.length} cabeza(s)</strong> sin pareja completa todavía — necesitan macho o hembra antes de poder registrarse como pareja reproductora.</div>` : ""}
-    <div class="card">
-      <h2 class="section-title">Control de apareamiento <span class="rule"></span></h2>
-      <div class="summary-badges">
-        <span class="badge">Sin iniciar: <strong>${counts.sin_iniciar}</strong></span>
-        <span class="badge">En apareamiento: <strong>${counts.en_apareamiento}</strong></span>
-        <span class="badge">Completado: <strong>${counts.completado}</strong></span>
-      </div>
-      <p class="formula-note" style="margin-top:-6px; margin-bottom:14px; border-top:none; padding-top:0;">
-        <strong>Sin iniciar</strong>: aún no la has puesto a trabajar. &middot;
-        <strong>En apareamiento</strong>: está activa ahora mismo — desde aquí cuenta el tiempo hasta el nacimiento en Proyección. &middot;
-        <strong>Completado</strong>: es solo tu marca personal para decir "ya cerré este ciclo por ahora" — no dispara ningún cálculo, la usas cuando tú quieras dejar de contarla como activa sin borrar su historial.
-      </p>
-      <div class="filters">
-        <select id="f-attr-pareja"><option value="">Todos los atributos</option>${attrs.map(a=>`<option value="${a}" ${parejaAtributo===a?'selected':''}>${a}</option>`).join("")}</select>
-        <select id="f-cert-pareja"><option value="">Todos los certificados</option>${certs.map(c=>`<option value="${c}" ${parejaCertificado===c?'selected':''}>${c}</option>`).join("")}</select>
-        <label class="chk"><input type="checkbox" id="f-en-apareamiento" ${soloEnApareamiento?'checked':''}> Solo en apareamiento</label>
-        <label class="chk"><input type="checkbox" id="show-incomplete" ${mostrarIncompletas?'checked':''}> Mostrar incompletas (${incompletas.length})</label>
-      </div>
-      <div class="table-scroll">
-      <table>
-        <thead><tr>
-          <th>Raza</th>
-          <th class="sortable" data-sort="atributo">Atributo${sortIcon('atributo')}</th>
-          <th class="sortable" data-sort="tamano">Certificado${sortIcon('tamano')}</th>
-          <th>Estado apareamiento</th><th>Hembras en cría</th><th>Inventario H / M</th><th>Precio/cría</th><th>Notas</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      </div>
-      <p class="formula-note">El precio y la cantidad de hembras en cría que definas aquí son los que usa por defecto la pestaña Proyección (ingreso = precio × cantidad × ciclos proyectados).</p>
-    </div>`;
+  conservarFoco(()=>{
+    el.innerHTML = `
+      ${incompletas.length ? `<div class="alert"><strong>${incompletas.length}</strong> sin pareja completa todavía: necesitan macho o hembra antes de registrarse como pareja reproductora.</div>` : ""}
+      <div class="card">
+        <h2 class="section-title">Control de apareamiento <span class="rule"></span></h2>
+        <div class="summary-badges">
+          <span class="badge">Sin iniciar: <strong>${counts.sin_iniciar}</strong></span>
+          <span class="badge">En apareamiento: <strong>${counts.en_apareamiento}</strong></span>
+          <span class="badge">Completado: <strong>${counts.completado}</strong></span>
+        </div>
+        <details class="help">
+          <summary>¿Qué significa cada estado?</summary>
+          <p><strong>Sin iniciar</strong>: aún no la pones a trabajar. <strong>En apareamiento</strong>: está activa; desde ese momento se cuenta el tiempo hasta el nacimiento en Proyección. <strong>Completado</strong>: tu marca para cerrar el ciclo sin borrar su historial; no dispara ningún cálculo.</p>
+        </details>
+        <div class="toolbar">
+          <div class="search"><input type="search" id="f-q-pareja" placeholder="Buscar dragopavo…" aria-label="Buscar dragopavo" value="${esc(parejaQ)}"></div>
+          <details class="more-filters" id="fd-parejas" ${filtrosAbiertos.parejas?'open':''}>
+            <summary>Filtros${activos?` <b>${activos}</b>`:''}</summary>
+            <div class="filters">
+              <select id="f-attr-pareja" aria-label="Atributo"><option value="">Todos los atributos</option>${attrs.map(a=>`<option value="${a}" ${parejaAtributo===a?'selected':''}>${a}</option>`).join("")}</select>
+              <select id="f-cert-pareja" aria-label="Certificado"><option value="">Todos los certificados</option>${certs.map(c=>`<option value="${c}" ${parejaCertificado===c?'selected':''}>${c}</option>`).join("")}</select>
+              <label class="chk"><input type="checkbox" id="f-en-apareamiento" ${soloEnApareamiento?'checked':''}> Solo en apareamiento</label>
+              <label class="chk"><input type="checkbox" id="show-incomplete" ${mostrarIncompletas?'checked':''}> Mostrar incompletas (${incompletas.length})</label>
+            </div>
+          </details>
+        </div>
+        ${colPicker("parejas")}
+        <p class="count">${list.length} parejas · toca una para llenar estado, crías, inventario y precio</p>
+        <div class="table-scroll">
+        <table>
+          <thead><tr>${head}</tr></thead>
+          <tbody>${rows || `<tr><td colspan="${cols.length+1}" style="text-align:center;padding:20px;color:var(--ink-soft)">No hay parejas que coincidan.</td></tr>`}</tbody>
+        </table>
+        </div>
+        <p class="formula-note">El precio y las hembras en cría que definas aquí son los que usa la pestaña Proyección (ingreso = precio × hembras en cría × ciclos proyectados).</p>
+      </div>`;
+  });
 
-  document.getElementById("show-incomplete").addEventListener("change", e=>{
-    mostrarIncompletas = e.target.checked;
-    renderParejas();
-  });
-  document.getElementById("f-en-apareamiento").addEventListener("change", e=>{
-    soloEnApareamiento = e.target.checked;
-    renderParejas();
-  });
-  document.getElementById("f-attr-pareja").addEventListener("change", e=>{
-    parejaAtributo = e.target.value;
-    renderParejas();
-  });
-  document.getElementById("f-cert-pareja").addEventListener("change", e=>{
-    parejaCertificado = e.target.value;
-    renderParejas();
-  });
+  document.getElementById("fd-parejas").addEventListener("toggle", e=>{ filtrosAbiertos.parejas = e.target.open; });
+  document.getElementById("f-q-pareja").addEventListener("input", e=>{ parejaQ = e.target.value; renderParejas(); });
+  document.getElementById("show-incomplete").addEventListener("change", e=>{ mostrarIncompletas = e.target.checked; renderParejas(); });
+  document.getElementById("f-en-apareamiento").addEventListener("change", e=>{ soloEnApareamiento = e.target.checked; renderParejas(); });
+  document.getElementById("f-attr-pareja").addEventListener("change", e=>{ parejaAtributo = e.target.value; renderParejas(); });
+  document.getElementById("f-cert-pareja").addEventListener("change", e=>{ parejaCertificado = e.target.value; renderParejas(); });
   el.querySelectorAll("th.sortable").forEach(th=>{
     th.addEventListener("click", ()=>{
       const field = th.dataset.sort;
@@ -887,57 +986,29 @@ function renderParejas(){
 
   el.querySelectorAll(".estado-select").forEach(sel=>{
     sel.addEventListener("change", async e=>{
-      const id = e.target.dataset.id;
-      const current = getPairState(id);
-      const nuevoEstado = e.target.value;
-      let inicio = current.inicio || null;
-      if(nuevoEstado === "en_apareamiento" && current.estado !== "en_apareamiento"){
-        inicio = Date.now();
-      }
-      pairStates[id] = { ...current, estado: nuevoEstado, inicio };
-      await savePairStates();
-      showToast("Estado actualizado");
+      await cambiarEstado(e.target.dataset.id, e.target.value);
       renderParejas();
       renderProyeccion();
     });
   });
   el.querySelectorAll(".notas-input").forEach(inp=>{
-    inp.addEventListener("blur", async e=>{
-      const id = e.target.dataset.id;
-      const current = getPairState(id);
-      pairStates[id] = { ...current, notas: e.target.value };
-      await savePairStates();
-    });
+    inp.addEventListener("change", async e=>{ await cambiarPar(e.target.dataset.id, "notas", e.target.value); });
   });
   el.querySelectorAll(".cantidad-input").forEach(inp=>{
     inp.addEventListener("change", async e=>{
-      const id = e.target.dataset.id;
-      const current = getPairState(id);
-      pairStates[id] = { ...current, cantidad: Number(e.target.value) || 0 };
-      await savePairStates();
+      await cambiarPar(e.target.dataset.id, "cantidad", Number(e.target.value) || 0);
       renderProyeccion();
     });
   });
   el.querySelectorAll(".inv-h").forEach(inp=>{
-    inp.addEventListener("change", async e=>{
-      const id = e.target.dataset.id;
-      const current = getPairState(id);
-      pairStates[id] = { ...current, totalH: Number(e.target.value) || 0 };
-      await savePairStates();
-    });
+    inp.addEventListener("change", async e=>{ await cambiarPar(e.target.dataset.id, "totalH", Number(e.target.value) || 0); });
   });
   el.querySelectorAll(".inv-m").forEach(inp=>{
-    inp.addEventListener("change", async e=>{
-      const id = e.target.dataset.id;
-      const current = getPairState(id);
-      pairStates[id] = { ...current, totalM: Number(e.target.value) || 0 };
-      await savePairStates();
-    });
+    inp.addEventListener("change", async e=>{ await cambiarPar(e.target.dataset.id, "totalM", Number(e.target.value) || 0); });
   });
   el.querySelectorAll(".price-input").forEach(inp=>{
     inp.addEventListener("change", async e=>{
-      const id = e.target.dataset.id;
-      precios[id] = Number(e.target.value) || 0;
+      precios[e.target.dataset.id] = Number(e.target.value) || 0;
       await savePrecios();
       renderProyeccion();
     });
@@ -965,7 +1036,9 @@ function renderProyeccion(){
   });
 
   const factor = periodo === "dia" ? 1/7 : periodo === "mes" ? 4.345 : 1;
+  const nombrePeriodo = periodo === "dia" ? "día" : periodo;
 
+  const cR = colsVisibles("resumen");
   let bodyRows = "", totalCrias = 0, totalDinero = 0;
   Object.keys(byGen).sort((a,b)=>a-b).forEach(g=>{
     const grp = byGen[g];
@@ -973,38 +1046,28 @@ function renderProyeccion(){
     const crias = grp.criasSemana * factor;
     const dinero = grp.dineroSemana * factor;
     totalCrias += crias; totalDinero += dinero;
-    bodyRows += `<tr>
-      <td>Generación ${g}</td>
-      <td>${grp.count}</td>
-      <td>${grp.tiempo} h</td>
-      <td>${ciclosSemana.toFixed(2)}</td>
-      <td>${crias.toFixed(1)}</td>
-      <td>$${dinero.toLocaleString('es-CO', {maximumFractionDigits:0})}</td>
-    </tr>`;
+    const val = { ingreso:pesos(dinero), crias:crias.toFixed(1), parejas:grp.count, ciclo:`${grp.tiempo} h`, ciclosSem:ciclosSemana.toFixed(2) };
+    bodyRows += `<tr><td>Generación ${g}</td>${cR.map(c=>`<td class="num">${val[c.k]}</td>`).join("")}</tr>`;
   });
+  const totalVal = { ingreso:pesos(totalDinero), crias:totalCrias.toFixed(1) };
 
   const resumenBlock = Object.keys(byGen).length ? `
+    ${colPicker("resumen")}
     <div class="table-scroll">
     <table>
-      <thead><tr><th>Línea</th><th>Parejas activas</th><th>Ciclo</th><th>Ciclos/sem</th><th>Crías (${periodo})</th><th>Ingreso (${periodo})</th></tr></thead>
+      <thead><tr><th>Línea</th>${cR.map(c=>`<th class="num">${c.l}${c.k==="ingreso"||c.k==="crias"?` (${nombrePeriodo})`:""}</th>`).join("")}</tr></thead>
       <tbody>${bodyRows}</tbody>
-      <tfoot>
-        <tr class="totals-row">
-          <td colspan="4">TOTAL</td>
-          <td>${totalCrias.toFixed(1)}</td>
-          <td>$${totalDinero.toLocaleString('es-CO',{maximumFractionDigits:0})}</td>
-        </tr>
-      </tfoot>
+      <tfoot><tr class="totals-row"><td>TOTAL</td>${cR.map(c=>`<td class="num">${totalVal[c.k] || ""}</td>`).join("")}</tr></tfoot>
     </table>
     </div>
     <p class="formula-note">
-      Ciclos/semana = (24 × 7) ÷ Ciclo del pergamino (horas). &middot;
-      Crías proyectadas = parejas activas × ciclos/semana × hembras en cría (definidas en Parejas). &middot;
-      Ingreso = crías proyectadas × precio/cría definido en la pestaña Parejas.
+      Ciclos/semana = (24 × 7) ÷ ciclo del pergamino (horas). ·
+      Crías = parejas activas × ciclos/semana × hembras en cría. ·
+      Ingreso = crías × precio por cría (los dos se definen en Parejas).
     </p>` : `
     <div class="empty-state">
-      Aún no tienes parejas marcadas como <strong>&laquo;En apareamiento&raquo;</strong>.<br>
-      Ve a la pestaña <strong>Parejas</strong> y cambia el estado de las que estés trabajando para ver aquí la producción proyectada.
+      Aún no tienes parejas <strong>en apareamiento</strong>.<br>
+      Ve a <strong>Parejas</strong>, toca una y cambia su estado para ver aquí la producción proyectada.
     </div>`;
 
   const now = Date.now();
@@ -1017,30 +1080,33 @@ function renderProyeccion(){
     .filter(x=>x.nace)
     .sort((a,b)=>a.nace-b.nace);
 
+  const cN = colsVisibles("nac");
+  const nacCelda = (x,k)=>{
+    switch(k){
+      case "nace": return `<td class="birth-time ${x.nace-now < 3600*1000*3 ? 'birth-soon' : ''}">${formatCO(x.nace)}</td>`;
+      case "linea": return `<td>G${x.d.gen}</td>`;
+      case "horas": return `<td class="num">${x.d.tiempo} h</td>`;
+      case "inicio": return `<td class="birth-time">${formatCODia(x.inicio)}</td>`;
+      case "precio": return `<td class="num">${pesos(getPrecio(x.d.id))}</td>`;
+    }
+    return "<td></td>";
+  };
   const nacimientosBlock = nacimientos.length ? `
+    ${colPicker("nac")}
     <div class="table-scroll">
     <table>
-      <thead><tr><th>Raza</th><th>Línea</th><th>Horas de gestación</th><th>Inicio</th><th>Nace aprox.</th><th>Precio/cría</th></tr></thead>
-      <tbody>
-        ${nacimientos.map(x=>`<tr>
-          <td><span class="breed-name">${colorDots(x.d.tipo)} ${x.d.tipo}</span></td>
-          <td>G${x.d.gen}</td>
-          <td>${x.d.tiempo} h</td>
-          <td class="birth-time">${formatCODia(x.inicio)}</td>
-          <td class="birth-time ${x.nace-now < 3600*1000*3 ? 'birth-soon' : ''}">${formatCO(x.nace)}</td>
-          <td>$${getPrecio(x.d.id).toLocaleString('es-CO')}</td>
-        </tr>`).join("")}
-      </tbody>
+      <thead><tr><th>Dragopavo</th>${cN.map(c=>`<th${c.k==="horas"||c.k==="precio"?' class="num"':''}>${c.l}</th>`).join("")}</tr></thead>
+      <tbody>${nacimientos.map(x=>`<tr><td>${nombreBtn(x.d)}</td>${cN.map(c=>nacCelda(x,c.k)).join("")}</tr>`).join("")}</tbody>
     </table>
     </div>` : `<div class="empty-state">Sin nacimientos programados todavía.</div>`;
 
   el.innerHTML = `
     <div class="card">
       <h2 class="section-title">Producción e ingresos proyectados <span class="rule"></span></h2>
-      <div class="period-toggle">
-        <button class="period-btn ${periodo==='dia'?'active':''}" data-p="dia">Por día</button>
-        <button class="period-btn ${periodo==='semana'?'active':''}" data-p="semana">Por semana</button>
-        <button class="period-btn ${periodo==='mes'?'active':''}" data-p="mes">Por mes</button>
+      <div class="period-toggle" role="group" aria-label="Periodo">
+        <button type="button" class="period-btn ${periodo==='dia'?'active':''}" data-p="dia">Día</button>
+        <button type="button" class="period-btn ${periodo==='semana'?'active':''}" data-p="semana">Semana</button>
+        <button type="button" class="period-btn ${periodo==='mes'?'active':''}" data-p="mes">Mes</button>
       </div>
       ${resumenBlock}
     </div>
@@ -1051,6 +1117,104 @@ function renderProyeccion(){
 
   el.querySelectorAll(".period-btn").forEach(b=>{
     b.addEventListener("click", ()=>{ periodo = b.dataset.p; renderProyeccion(); });
+  });
+}
+
+/* ============================================================
+   FICHA DEL DRAGOPAVO (se abre al tocar su nombre)
+   ============================================================ */
+let fichaId = null;
+
+function abrirFicha(id){
+  fichaId = id;
+  pintarFicha();
+  document.getElementById("veil").hidden = false;
+  document.getElementById("sheet").hidden = false;
+  document.body.classList.add("no-scroll");
+  const x = document.querySelector("#sheet .sheet-x");
+  if(x) x.focus();
+}
+function cerrarFicha(){
+  fichaId = null;
+  document.getElementById("veil").hidden = true;
+  document.getElementById("sheet").hidden = true;
+  document.body.classList.remove("no-scroll");
+}
+document.addEventListener("keydown", e=>{ if(e.key === "Escape" && fichaId) cerrarFicha(); });
+
+function pintarFicha(){
+  const d = DATA.find(x=>x.id===fichaId);
+  if(!d){ cerrarFicha(); return; }
+  const st = getPairState(d.id), comp = isCompleta(d), fav = isFavorito(d);
+  const s = document.getElementById("sheet");
+  const nace = st.estado === "en_apareamiento" && st.inicio ? st.inicio + d.tiempo*3600*1000 : null;
+  s.innerHTML = `
+    <div class="sheet-head">
+      <div>
+        <div class="sheet-name">${colorDots(d.tipo)}<span>${d.tipo}</span></div>
+        <div class="sheet-sub">G${d.gen} · ${d.atributo} · ${d.tamano} · ciclo de ${d.tiempo} h</div>
+      </div>
+      <button type="button" class="sheet-x" aria-label="Cerrar ficha">×</button>
+    </div>
+    <div class="sheet-toggles">
+      <button type="button" class="tgl fav ${fav?'on':''}" data-act="fav" aria-pressed="${fav}">&#9733; ${fav?'Favorita':'Marcar favorita'}</button>
+      <button type="button" class="tgl ${comp?'on':''}" data-act="comp" aria-pressed="${comp}">${comp?'Pareja completa':'Pareja incompleta'}</button>
+    </div>
+    ${comp ? `
+      <label class="fld"><span>Estado de apareamiento</span>
+        <select id="s-estado">${ESTADOS.map(x=>`<option value="${x.v}" ${st.estado===x.v?'selected':''}>${x.label}</option>`).join("")}</select>
+      </label>
+      ${nace ? `<p class="sheet-info">Nace aprox.: <strong>${formatCO(nace)}</strong></p>` : ""}
+      <div class="fld-row">
+        <label class="fld"><span>Hembras en cría</span><input type="number" inputmode="numeric" min="0" step="1" id="s-cant" value="${getCantidad(d.id)}"></label>
+        <label class="fld"><span>Precio por cría</span><input type="number" inputmode="numeric" min="0" step="1" id="s-precio" value="${getPrecio(d.id)}"></label>
+      </div>
+      <div class="fld-row">
+        <label class="fld"><span>Inventario hembras</span><input type="number" inputmode="numeric" min="0" step="1" id="s-h" value="${getTotalH(d.id)}"></label>
+        <label class="fld"><span>Inventario machos</span><input type="number" inputmode="numeric" min="0" step="1" id="s-m" value="${getTotalM(d.id)}"></label>
+      </div>
+      <label class="fld"><span>Notas</span><textarea id="s-notas" rows="2" placeholder="Notas…">${esc(st.notas)}</textarea></label>
+    ` : `<p class="sheet-info">Cuando tengas macho y hembra, marca la pareja como completa para registrar apareamiento, crías, inventario y precio.</p>`}
+  `;
+
+  s.querySelector(".sheet-x").addEventListener("click", cerrarFicha);
+  s.querySelector('[data-act="fav"]').addEventListener("click", async ()=>{
+    favoritos[d.id] = !isFavorito(d);
+    await saveFavoritos();
+    rerenderTodo(); pintarFicha();
+    showToast(favoritos[d.id] ? "Marcada como favorita" : "Quitada de favoritas");
+  });
+  s.querySelector('[data-act="comp"]').addEventListener("click", async ()=>{
+    completos[d.id] = !isCompleta(d);
+    await saveCompletos();
+    rerenderTodo(); pintarFicha();
+    showToast(completos[d.id] ? "Marcada como completa" : "Marcada como incompleta");
+  });
+  if(!comp) return;
+  s.querySelector("#s-estado").addEventListener("change", async e=>{
+    await cambiarEstado(d.id, e.target.value);
+    renderParejas(); renderProyeccion(); pintarFicha();
+  });
+  s.querySelector("#s-cant").addEventListener("change", async e=>{
+    await cambiarPar(d.id, "cantidad", Number(e.target.value) || 0);
+    renderParejas(); renderProyeccion(); showToast("Guardado");
+  });
+  s.querySelector("#s-h").addEventListener("change", async e=>{
+    await cambiarPar(d.id, "totalH", Number(e.target.value) || 0);
+    renderParejas(); showToast("Guardado");
+  });
+  s.querySelector("#s-m").addEventListener("change", async e=>{
+    await cambiarPar(d.id, "totalM", Number(e.target.value) || 0);
+    renderParejas(); showToast("Guardado");
+  });
+  s.querySelector("#s-precio").addEventListener("change", async e=>{
+    precios[d.id] = Number(e.target.value) || 0;
+    await savePrecios();
+    renderParejas(); renderProyeccion(); showToast("Guardado");
+  });
+  s.querySelector("#s-notas").addEventListener("change", async e=>{
+    await cambiarPar(d.id, "notas", e.target.value);
+    renderParejas(); showToast("Guardado");
   });
 }
 
@@ -1107,8 +1271,8 @@ async function init(){
   document.getElementById("app").innerHTML = `
     <div class="storage-status ${storageOk?'ok':'warn'}" id="storage-status">
       ${storageOk
-        ? '&#128190; Guardado autom&aacute;tico: <strong>activo</strong> — tus cambios se guardan solos.'
-        : '&#9888; Guardado autom&aacute;tico <strong>no disponible</strong> ahora mismo: tus cambios NO se est&aacute;n guardando. Aseg&uacute;rate de abrir este panel desde el chat de Claude (no como archivo descargado por fuera) e int&eacute;ntalo de nuevo.'}
+        ? 'Guardado autom&aacute;tico <strong>activo</strong>: tus cambios se guardan solos.'
+        : 'Guardado autom&aacute;tico <strong>no disponible</strong> ahora mismo: tus cambios NO se est&aacute;n guardando. Revisa tu conexi&oacute;n a internet y recarga la p&aacute;gina.'}
     </div>
     <div class="panel active" id="panel-razas"></div>
     <div class="panel" id="panel-parejas"></div>
@@ -1119,7 +1283,10 @@ async function init(){
       <button class="reset-btn" id="export-btn">Exportar copia de seguridad</button>
       <button class="reset-btn" id="reset-btn">Restablecer parejas, precios, favoritos y estados</button>
     </footer>
-    <p class="signature">Panel elaborado por <strong>Pavino-P&eacute;rez</strong></p>`;
+    <p class="signature">Panel elaborado por <strong>Pavino-P&eacute;rez</strong></p>
+    <div class="sheet-veil" id="veil" hidden></div>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Ficha del dragopavo" hidden></div>`;
+  document.getElementById("veil").addEventListener("click", cerrarFicha);
   renderRazas();
   renderParejas();
   renderProyeccion();
