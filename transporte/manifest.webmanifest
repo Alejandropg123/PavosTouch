@@ -1,0 +1,14 @@
+{
+  "name": "Control de Operaciones",
+  "short_name": "ControlOps",
+  "description": "Operación y control de transporte: viajes, clientes, vehículos, conductores y documentos.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0d0c",
+  "theme_color": "#0b0d0c",
+  "lang": "es-CO",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
