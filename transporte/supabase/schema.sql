@@ -57,6 +57,10 @@ create or replace function public.es_admin() returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.perfiles where id = auth.uid() and rol = 'admin');
 $$;
+-- Solo la usan el disparador y las reglas de seguridad: no se expone a internet.
+revoke all on function public.crear_perfil() from public, anon, authenticated;
+revoke all on function public.es_admin() from public, anon;
+grant execute on function public.es_admin() to authenticated;
 
 -- ---------- Fichas: clientes, vehículos, conductores ----------
 -- "docs" guarda la lista de documentos de la ficha: [{tipo, vence, archivo}]
@@ -150,7 +154,7 @@ create table if not exists public.gastos (
 );
 
 -- ---------- updated_at automático ----------
-create or replace function public.tocar_updated_at() returns trigger language plpgsql as $$
+create or replace function public.tocar_updated_at() returns trigger language plpgsql set search_path = '' as $$
 begin new.updated_at = now(); return new; end $$;
 
 do $$
