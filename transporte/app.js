@@ -53,11 +53,14 @@ const colorFor = (id) => PALETTE[[...id].reduce((a, c) => a + c.charCodeAt(0), 0
 let db = load();
 const ui = { view: 'resumen', empresa: 'todas', mode: 'board', q: '', conductor: null, docFilter: 'alerta' };
 
+// El navegador puede bloquear el almacenamiento (modo privado, visores embebidos): la app sigue funcionando en memoria.
+function storeGet() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+function storeSet(v) { try { localStorage.setItem(KEY, v); } catch (e) { /* sin almacenamiento */ } }
 function load() {
-  try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch (e) { /* datos corruptos: se regeneran */ }
-  const fresh = seedData(); localStorage.setItem(KEY, JSON.stringify(fresh)); return fresh;
+  try { const raw = storeGet(); if (raw) return JSON.parse(raw); } catch (e) { /* datos corruptos: se regeneran */ }
+  const fresh = seedData(); storeSet(JSON.stringify(fresh)); return fresh;
 }
-const save = () => localStorage.setItem(KEY, JSON.stringify(db));
+const save = () => storeSet(JSON.stringify(db));
 
 const byId = (list, id) => db[list].find((x) => x.id === id);
 const cliente = (id) => byId('clientes', id) || { nombre: '—', id: '' };
@@ -387,7 +390,7 @@ function toast(msg) {
 
 // ---------- Drawer / modal ----------
 function openDrawer(html) { $('#drawer').innerHTML = html; $('#drawer').classList.add('show'); $('#overlay').classList.add('show'); }
-function openModal(html) { $('#modal').innerHTML = html; $('#modal').classList.add('show'); $('#overlay').classList.add('show'); }
+function openModal(html) { $('#modal').style.width = ''; $('#modal').innerHTML = html; $('#modal').classList.add('show'); $('#overlay').classList.add('show'); }
 function closeAll() { ['#drawer', '#modal'].forEach((s) => $(s).classList.remove('show')); $('#overlay').classList.remove('show'); }
 function closeModal() { $('#modal').classList.remove('show'); if (!$('#drawer').classList.contains('show')) $('#overlay').classList.remove('show'); }
 
@@ -578,6 +581,14 @@ function entForm(tipo) {
   });
 }
 
+function confirmar(titulo, detalle, okLabel, fn) {
+  confirmar.fn = fn;
+  openModal(`
+  <div class="d-head"><div><h2>${esc(titulo)}</h2><div class="s">${esc(detalle)}</div></div></div>
+  <div class="d-foot"><button class="btn ghost" data-act="close-modal">Cancelar</button><button class="btn danger" data-act="confirm-ok">${esc(okLabel)}</button></div>`);
+  $('#modal').style.width = 'min(440px, calc(100vw - 24px))';
+}
+
 function moreSheet() {
   openModal(`
   <div class="d-head"><div><h2>Más</h2></div><button class="icon-btn glass x" data-act="close-modal">${ico('x')}</button></div>
@@ -620,10 +631,10 @@ document.addEventListener('click', (e) => {
     case 'edit-op': opForm(id); break;
     case 'del-op': {
       const o = byId('operaciones', id);
-      if (confirm(`¿Eliminar la operación ${o.os}? Esta acción no se puede deshacer.`)) {
+      confirmar(`¿Eliminar la operación ${o.os}?`, 'Esta acción no se puede deshacer.', 'Eliminar', () => {
         db.operaciones = db.operaciones.filter((x) => x.id !== id); db.gastos = db.gastos.filter((g) => g.opId !== id);
         save(); closeAll(); render(); toast('Operación eliminada');
-      }
+      });
       break;
     }
     case 'doc-del': byId('operaciones', id).docs[el.dataset.k] = ''; save(); render(); opDrawer(id); break;
@@ -634,10 +645,11 @@ document.addEventListener('click', (e) => {
     case 'export': exportCSV(); break;
     case 'focus-search': if (ui.view !== 'operaciones') { ui.view = 'operaciones'; render(); } $('#q').focus(); break;
     case 'reset':
-      if (confirm('¿Restablecer los datos de ejemplo? Se perderán los cambios hechos en este navegador.')) {
+      confirmar('¿Restablecer los datos de ejemplo?', 'Se perderán los cambios hechos en este navegador.', 'Restablecer', () => {
         db = seedData(); save(); closeAll(); render(); toast('Datos de ejemplo restablecidos');
-      }
+      });
       break;
+    case 'confirm-ok': { const fn = confirmar.fn; confirmar.fn = null; closeModal(); if (fn) fn(); break; }
     case 'close': closeAll(); break;
     case 'close-modal': closeModal(); break;
   }
