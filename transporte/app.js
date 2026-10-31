@@ -142,19 +142,10 @@ function renderChrome() {
   $('#pills').innerHTML = NAV.map(([id, n]) => `<button class="pill ${ui.view === id ? 'on' : ''}" data-act="nav" data-view="${id}">${n}</button>`).join('');
   $('#empresaSeg').innerHTML = [['todas', 'Ambas', '']].concat(EMPRESAS.map((e) => [e.id, e.nombre, e.color]))
     .map(([id, n, c]) => `<button class="${ui.empresa === id ? 'on' : ''}" data-act="empresa" data-id="${id}">${c ? `<span class="dot" style="background:${c}"></span>` : ''}<span class="lg">${n}</span></button>`).join('');
-  if (innerWidth <= 900) $$('#empresaSeg .lg').forEach((el, i) => { el.textContent = ['Ambas', ...EMPRESAS.map((e) => e.corto)][i]; });
+  if (innerWidth <= 1500) $$('#empresaSeg .lg').forEach((el, i) => { el.textContent = ['Ambas', ...EMPRESAS.map((e) => e.corto)][i]; });
   const n = alertasPorEntidad().length;
   $('#bellBtn').innerHTML = ico('bell') + (n ? `<span class="badge">${n}</span>` : '');
-  $('#rail').innerHTML = `
-    <button class="accent" data-act="new-op" title="Nueva operación">${ico('plus')}</button>
-    <button data-act="focus-search" title="Buscar">${ico('search')}</button>
-    <hr>
-    <button data-act="nav" data-view="operaciones" title="Operaciones">${ico('board')}</button>
-    <button data-act="nav" data-view="vehiculos" title="Vehículos">${ico('truck')}</button>
-    <button data-act="nav" data-view="conductores" title="Conductores">${ico('users')}</button>
-    <button data-act="nav" data-view="documentos" title="Documentos">${ico('file')}</button>
-    <hr>
-    <button data-act="reset" title="Restablecer datos de ejemplo">${ico('reset')}</button>`;
+  $('#newBtn').innerHTML = ico('plus') + '<span>Nuevo viaje</span>';
   const bn = [['resumen', 'Inicio', 'home'], ['operaciones', 'Viajes', 'board'], ['new', '', 'plus'], ['documentos', 'Docs', 'file'], ['more', 'Más', 'more']];
   $('#bottomnav').innerHTML = bn.map(([id, n, i]) => id === 'new'
     ? `<button class="fab" data-act="new-op" aria-label="Nueva operación">${ico(i)}</button>`
@@ -527,9 +518,9 @@ function entGrupos(tipo) {
 }
 const entHead = (t, s, btn) => `<div class="head"><div><h1>${t}</h1><div class="sub">${s}</div></div><span class="spacer"></span>${btn}</div>`;
 const abrirTodo = () => `<div class="toolbar"><span class="spacer"></span><button class="link" data-act="grp-all">${ui.open.size ? 'Cerrar todo' : 'Abrir todo'}</button></div>`;
-views.vehiculos = () => entHead('Vehículos', `${db.vehiculos.length} placas · documentos, conductores y viajes de cada una`, `<button class="btn primary" data-act="new-ent" data-tipo="vehiculos">${ico('plus')} Nuevo vehículo</button>`) + abrirTodo() + entGrupos('vehiculos');
-views.conductores = () => entHead('Conductores', `${db.conductores.length} conductores · licencias, placas que manejan y viajes`, `<button class="btn primary" data-act="new-ent" data-tipo="conductores">${ico('plus')} Nuevo conductor</button>`) + abrirTodo() + entGrupos('conductores');
-views.clientes = () => entHead('Clientes', `${db.clientes.length} clientes · documentos, placas asignadas y viajes`, `<button class="btn primary" data-act="new-ent" data-tipo="clientes">${ico('plus')} Nuevo cliente</button>`) + abrirTodo() + entGrupos('clientes');
+views.vehiculos = () => entHead('Vehículos', `${db.vehiculos.length} placas · esta lista alimenta el campo «Placa» al crear viajes`, `<button class="btn primary" data-act="new-ent" data-tipo="vehiculos">${ico('plus')} Nuevo vehículo</button>`) + abrirTodo() + entGrupos('vehiculos');
+views.conductores = () => entHead('Conductores', `${db.conductores.length} conductores · esta lista alimenta el campo «Conductor» al crear viajes`, `<button class="btn primary" data-act="new-ent" data-tipo="conductores">${ico('plus')} Nuevo conductor</button>`) + abrirTodo() + entGrupos('conductores');
+views.clientes = () => entHead('Clientes', `${db.clientes.length} clientes · esta lista alimenta el campo «Cliente» al crear viajes`, `<button class="btn primary" data-act="new-ent" data-tipo="clientes">${ico('plus')} Nuevo cliente</button>`) + abrirTodo() + entGrupos('clientes');
 
 // ---------- Documentos (agrupados por ficha) ----------
 views.documentos = () => {
@@ -675,41 +666,58 @@ function entDrawer(tipo, id) {
       <div class="row" data-act="op" data-id="${o.id}">${tipo === 'vehiculos' ? `<span class="ini" style="background:${colorFor(o.conductorId)}">${initials(conductor(o.conductorId).nombre)}</span>` : `<span class="plate">${esc(vehiculo(o.vehiculoId).placa)}</span>`}
         <div style="min-width:0"><div class="t">${esc(o.origen)} → ${esc(o.destino)}</div><div class="s">${esc(o.os)} · ${fdateS(o.fecha)} · ${etapa(o.etapa).nombre}</div></div>
         <div class="r">${short(o.flete)}</div></div>`).join('') || '<div class="empty">Sin operaciones</div>'}</div></div>
-  </div>`);
+  </div>
+  <div class="d-foot"><span class="spacer"></span><button class="btn primary" data-act="edit-ent" data-tipo="${tipo}" data-id="${id}">${ico('edit')} Editar ${TIPO_1[tipo]}</button></div>`);
 }
 
 const opt = (list, sel, label) => list.map((x) => `<option value="${x.id}" ${x.id === sel ? 'selected' : ''}>${esc(label(x))}</option>`).join('');
 
-function opForm(id, etapaInicial) {
-  const o = id ? byId('operaciones', id) : {
+const TIPO_PL = { clientes: 'Clientes', vehiculos: 'Vehículos', conductores: 'Conductores' };
+
+function opForm(id, etapaInicial, draft) {
+  const base = id ? byId('operaciones', id) : {
     empresa: ui.empresa === 'todas' ? 'llano' : ui.empresa, fecha: todayISO(), etapa: etapaInicial || 'pendiente',
     clienteId: '', vehiculoId: '', conductorId: '', trailer: '', origen: '', destino: '', carga: '', remesa: '', manifiesto: '', flete: '', anticipo: '', obs: '', facturaNo: '',
   };
-  const f = (name, label, val, type = 'text', cls = '') => `<div class="f ${cls}"><label>${label}</label><input name="${name}" type="${type}" value="${esc(val)}" ${type === 'number' ? 'min="0" step="1000" inputmode="numeric"' : ''}></div>`;
+  const o = draft ? { ...base, ...draft } : base;
+  const sug = (keys) => uniq(db.operaciones.flatMap((x) => keys.map((k) => x[k])).filter(Boolean)).sort((a, b) => a.localeCompare(b));
+  const f = (name, label, val, type = 'text', cls = '', list = '') => `<div class="f ${cls}"><label>${label}</label><input name="${name}" type="${type}" value="${esc(val)}" ${list ? `list="${list}" autocomplete="off"` : ''} ${type === 'number' ? 'min="0" step="1000" inputmode="numeric"' : ''}></div>`;
+  const pick = (name, label, tipo, labelFn, cls = '') => `<div class="f ${cls}"><label>${label}<button type="button" class="f-add" data-act="inline-ent" data-tipo="${tipo}" data-field="${name}">${ico('plus')} Nuevo</button></label>
+    <select name="${name}" required><option value="">Seleccionar…</option>${opt(db[tipo], o[name], labelFn)}</select><small class="hint">Sale de la lista de ${TIPO_PL[tipo]}</small></div>`;
   openModal(`
-  <form id="opForm" style="display:contents">
+  <form id="opForm" data-op-id="${id || ''}" style="display:contents">
     <div class="d-head"><div><h2>${id ? 'Editar operación ' + esc(o.os) : 'Nueva operación'}</h2><div class="s">${id ? '' : 'El número de OS se asigna automáticamente según la empresa'}</div></div>
       <button type="button" class="icon-btn glass x" data-act="close-modal">${ico('x')}</button></div>
     <div class="d-body"><div class="form">
       <div class="f"><label>Empresa</label><select name="empresa" ${id ? 'disabled' : ''}>${EMPRESAS.map((e) => `<option value="${e.id}" ${e.id === o.empresa ? 'selected' : ''}>${e.nombre} (${e.prefijo}…)</option>`).join('')}</select></div>
       ${f('fecha', 'Fecha operación', o.fecha, 'date')}
       <div class="f"><label>Etapa</label><select name="etapa">${ETAPAS.map((e) => `<option value="${e.id}" ${e.id === o.etapa ? 'selected' : ''}>${e.nombre}</option>`).join('')}</select></div>
-      <div class="f"><label>Cliente</label><select name="clienteId" required><option value="">Seleccionar…</option>${opt(db.clientes, o.clienteId, (x) => x.nombre)}</select></div>
+      ${pick('clienteId', 'Cliente', 'clientes', (x) => x.nombre)}
       <h6>Vehículo y conductor</h6>
-      <div class="f"><label>Placa vehículo</label><select name="vehiculoId" required><option value="">Seleccionar…</option>${opt(db.vehiculos, o.vehiculoId, (x) => `${x.placa} · ${x.tipo}`)}</select></div>
-      ${f('trailer', 'Placa tráiler', o.trailer)}
-      <div class="f full"><label>Conductor</label><select name="conductorId" required><option value="">Seleccionar…</option>${opt(db.conductores, o.conductorId, (x) => x.nombre)}</select></div>
+      ${pick('vehiculoId', 'Placa vehículo', 'vehiculos', (x) => `${x.placa} · ${x.tipo}`)}
+      ${f('trailer', 'Placa tráiler', o.trailer, 'text', '', 'dl-trailers')}
+      ${pick('conductorId', 'Conductor', 'conductores', (x) => x.nombre, 'full')}
       <h6>Ruta y carga</h6>
-      ${f('origen', 'Origen', o.origen)}${f('destino', 'Destino', o.destino)}
-      ${f('carga', 'Carga', o.carga, 'text', 'full')}
+      ${f('origen', 'Origen', o.origen, 'text', '', 'dl-ciudades')}${f('destino', 'Destino', o.destino, 'text', '', 'dl-ciudades')}
+      ${f('carga', 'Carga', o.carga, 'text', 'full', 'dl-cargas')}
+      <small class="hint full" style="margin-top:-6px">Origen, destino y carga se escriben libremente; te sugerimos los que ya has usado.</small>
       <h6>Documentos y valores</h6>
       ${f('remesa', 'No. remesa', o.remesa)}${f('manifiesto', 'No. manifiesto', o.manifiesto)}
       ${f('flete', 'Valor flete', o.flete, 'number')}${f('anticipo', 'Valor anticipo', o.anticipo, 'number')}
       ${f('facturaNo', 'No. factura de servicio', o.facturaNo, 'text', 'full')}
       <div class="f full"><label>Observaciones</label><textarea name="obs">${esc(o.obs)}</textarea></div>
-    </div></div>
+    </div>
+    <datalist id="dl-ciudades">${sug(['origen', 'destino']).map((v) => `<option value="${esc(v)}">`).join('')}</datalist>
+    <datalist id="dl-cargas">${sug(['carga']).map((v) => `<option value="${esc(v)}">`).join('')}</datalist>
+    <datalist id="dl-trailers">${uniq([...db.vehiculos.map((v) => v.trailer), ...db.operaciones.map((x) => x.trailer)].filter(Boolean)).map((v) => `<option value="${esc(v)}">`).join('')}</datalist>
+    </div>
     <div class="d-foot"><button type="button" class="btn ghost" data-act="close-modal">Cancelar</button><button class="btn primary" type="submit">${ico('check')} Guardar</button></div>
   </form>`);
+  // Al escoger la placa se propone su tráiler habitual
+  $('#opForm select[name="vehiculoId"]').addEventListener('change', (e) => {
+    const t = $('#opForm input[name="trailer"]');
+    if (!t.value) t.value = vehiculo(e.target.value).trailer || '';
+  });
   $('#opForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
@@ -758,37 +766,50 @@ function gastoForm(opId) {
   });
 }
 
-function entForm(tipo) {
-  const campos = {
-    clientes: [['nombre', 'Razón social'], ['nit', 'NIT'], ['ciudad', 'Ciudad'], ['contacto', 'Contacto'], ['telefono', 'Teléfono']],
-    vehiculos: [['placa', 'Placa'], ['tipo', 'Tipo (tractocamión, sencillo…)'], ['modelo', 'Marca / modelo'], ['trailer', 'Tráiler habitual']],
-    conductores: [['nombre', 'Nombre completo'], ['cedula', 'Cédula'], ['telefono', 'Teléfono']],
-  }[tipo];
-  const docs = {
-    clientes: ['RUT', 'Cámara de Comercio', 'Contrato / Oferta comercial'],
-    vehiculos: ['SOAT', 'Revisión tecnicomecánica', 'Póliza RCC / RCE', 'Tarjeta de propiedad'],
-    conductores: ['Licencia C3', 'Seguridad social (planilla)', 'Curso manejo defensivo', 'Cédula'],
-  }[tipo];
-  const sinVence = ['RUT', 'Tarjeta de propiedad', 'Cédula'];
+const CAMPOS_ENT = {
+  clientes: [['nombre', 'Razón social'], ['nit', 'NIT'], ['ciudad', 'Ciudad'], ['contacto', 'Contacto'], ['telefono', 'Teléfono']],
+  vehiculos: [['placa', 'Placa'], ['tipo', 'Tipo (tractocamión, sencillo…)'], ['modelo', 'Marca / modelo'], ['trailer', 'Tráiler habitual']],
+  conductores: [['nombre', 'Nombre completo'], ['cedula', 'Cédula'], ['telefono', 'Teléfono']],
+};
+const DOCS_ENT = {
+  clientes: ['RUT', 'Cámara de Comercio', 'Contrato / Oferta comercial'],
+  vehiculos: ['SOAT', 'Revisión tecnicomecánica', 'Póliza RCC / RCE', 'Tarjeta de propiedad'],
+  conductores: ['Licencia C3', 'Seguridad social (planilla)', 'Curso manejo defensivo', 'Cédula'],
+};
+const SIN_VENCE = ['RUT', 'Tarjeta de propiedad', 'Cédula'];
+const TIPO_1 = { clientes: 'cliente', vehiculos: 'vehículo', conductores: 'conductor' };
+
+// after: si viene del formulario de viaje, se vuelve a él con el nuevo registro ya seleccionado
+function entForm(tipo, id, after) {
+  const rec = id ? byId(tipo, id) : null;
+  const campos = CAMPOS_ENT[tipo];
+  const docs = rec ? rec.docs : DOCS_ENT[tipo].map((t) => ({ tipo: t, vence: null, archivo: '' }));
   openModal(`
   <form id="eForm" style="display:contents">
-    <div class="d-head"><div><h2>Nuevo ${{ clientes: 'cliente', vehiculos: 'vehículo', conductores: 'conductor' }[tipo]}</h2></div>
-      <button type="button" class="icon-btn glass x" data-act="close-modal">${ico('x')}</button></div>
+    <div class="d-head"><div><h2>${rec ? 'Editar' : 'Nuevo'} ${TIPO_1[tipo]}</h2><div class="s">${after ? 'Al guardar vuelves al viaje con este ' + TIPO_1[tipo] + ' ya seleccionado' : `Queda disponible en la lista de ${TIPO_PL[tipo]} y al crear viajes`}</div></div>
+      <button type="button" class="icon-btn glass x" data-act="${after ? 'back-op' : 'close-modal'}">${ico('x')}</button></div>
     <div class="d-body"><div class="form">
-      ${campos.map(([k, n], i) => `<div class="f ${i === 0 && tipo === 'clientes' ? 'full' : ''}"><label>${n}</label><input name="${k}" ${i === 0 ? 'required' : ''}></div>`).join('')}
+      ${campos.map(([k, n], i) => `<div class="f ${i === 0 && tipo === 'clientes' ? 'full' : ''}"><label>${n}</label><input name="${k}" value="${esc(rec ? rec[k] : '')}" ${i === 0 ? 'required' : ''}></div>`).join('')}
       <h6>Fechas de vencimiento</h6>
-      ${docs.filter((d) => !sinVence.includes(d)).map((d, i) => `<div class="f"><label>${d}</label><input type="date" name="vence${i}"></div>`).join('')}
+      ${docs.map((d, i) => SIN_VENCE.includes(d.tipo) ? '' : `<div class="f"><label>${esc(d.tipo)}</label><input type="date" name="vence${i}" value="${esc(d.vence || '')}"></div>`).join('')}
     </div></div>
-    <div class="d-foot"><button type="button" class="btn ghost" data-act="close-modal">Cancelar</button><button class="btn primary" type="submit">${ico('check')} Guardar</button></div>
+    <div class="d-foot"><button type="button" class="btn ghost" data-act="${after ? 'back-op' : 'close-modal'}">Cancelar</button><button class="btn primary" type="submit">${ico('check')} Guardar</button></div>
   </form>`);
+  entForm.after = after;
   $('#eForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target));
-    const rec = { id: tipo[0] + Date.now() };
-    campos.forEach(([k]) => { rec[k] = tipo === 'vehiculos' && k === 'placa' ? fd[k].toUpperCase().replace(/\s/g, '') : fd[k]; });
-    let j = 0;
-    rec.docs = docs.map((d) => ({ tipo: d, vence: sinVence.includes(d) ? null : (fd['vence' + j++] || null), archivo: '' }));
-    db[tipo].push(rec); save(); closeModal(); render(); entDrawer(tipo, rec.id); toast('Guardado');
+    if (tipo === 'vehiculos') {
+      fd.placa = fd.placa.toUpperCase().replace(/\s/g, '');
+      if (db.vehiculos.some((v) => v.placa === fd.placa && v.id !== id)) { toast(`La placa ${fd.placa} ya existe`); return; }
+    }
+    const r = rec || { id: tipo[0] + Date.now(), docs: docs.map((d) => ({ ...d })) };
+    campos.forEach(([k]) => { r[k] = fd[k]; });
+    r.docs.forEach((d, i) => { if (!SIN_VENCE.includes(d.tipo)) d.vence = fd['vence' + i] || null; });
+    if (!rec) db[tipo].push(r);
+    save(); render();
+    if (after) { after(r); toast(`${TIPO_1[tipo][0].toUpperCase() + TIPO_1[tipo].slice(1)} agregado`); return; }
+    closeModal(); entDrawer(tipo, r.id); toast('Guardado');
   });
 }
 
@@ -797,6 +818,16 @@ function confirmar(titulo, detalle, okLabel, fn) {
   openModal(`
   <div class="d-head"><div><h2>${esc(titulo)}</h2><div class="s">${esc(detalle)}</div></div></div>
   <div class="d-foot"><button class="btn ghost" data-act="close-modal">Cancelar</button><button class="btn danger" data-act="confirm-ok">${esc(okLabel)}</button></div>`);
+  $('#modal').style.width = 'min(440px, calc(100vw - 24px))';
+}
+
+function accountSheet() {
+  openModal(`
+  <div class="d-head"><div><h2>Administrador</h2><div class="s">Vista previa con datos de ejemplo</div></div><button class="icon-btn glass x" data-act="close-modal">${ico('x')}</button></div>
+  <div class="d-body"><div class="more-sheet">
+    <button class="btn ghost" style="height:52px;justify-content:flex-start" data-act="export">${ico('download')} Exportar operaciones (CSV)</button>
+    <button class="btn danger" style="height:52px;justify-content:flex-start" data-act="reset">${ico('reset')} Restablecer datos de ejemplo</button>
+  </div></div>`);
   $('#modal').style.width = 'min(440px, calc(100vw - 24px))';
 }
 
@@ -865,6 +896,22 @@ document.addEventListener('click', (e) => {
     case 'legalizar': { const g = byId('gastos', id); g.legalizado = !g.legalizado; save(); render(); opDrawer(g.opId); break; }
     case 'gasto-form': gastoForm(id); break;
     case 'new-ent': entForm(el.dataset.tipo); break;
+    case 'edit-ent': entForm(el.dataset.tipo, id); break;
+    case 'inline-ent': {
+      const form = $('#opForm');
+      const draft = Object.fromEntries(new FormData(form));
+      const opId = form.dataset.opId || null;
+      const { tipo, field } = el.dataset;
+      opForm.draft = { opId, draft };
+      entForm(tipo, null, (rec) => {
+        draft[field] = rec.id;
+        if (tipo === 'vehiculos' && !draft.trailer) draft.trailer = rec.trailer || '';
+        opForm(opId, null, draft);
+      });
+      break;
+    }
+    case 'back-op': if (opForm.draft) opForm(opForm.draft.opId, null, opForm.draft.draft); else closeModal(); break;
+    case 'account': accountSheet(); break;
     case 'more': moreSheet(); break;
     case 'export': exportCSV(); break;
     case 'focus-search': if (ui.view !== 'operaciones') { ui.view = 'operaciones'; render(); } $('#q').focus(); break;
@@ -904,7 +951,8 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
-let lastNarrow = innerWidth <= 900;
-addEventListener('resize', () => { const n = innerWidth <= 900; if (n !== lastNarrow) { lastNarrow = n; render(); } });
+const ancho = () => innerWidth <= 900 ? 0 : innerWidth <= 1500 ? 1 : 2;
+let lastNarrow = ancho();
+addEventListener('resize', () => { const n = ancho(); if (n !== lastNarrow) { lastNarrow = n; render(); } });
 
 render();

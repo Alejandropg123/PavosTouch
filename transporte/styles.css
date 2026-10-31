@@ -62,7 +62,7 @@ button { cursor: pointer; border: 0; background: none; }
 .rail hr { width: 20px; border: 0; border-top: 1px solid var(--border); margin: 4px auto; }
 
 /* ---------- Vista ---------- */
-.view { padding: calc(var(--top) + 18px) 28px 40px 96px; max-width: 1600px; margin: 0 auto; }
+.view { padding: calc(var(--top) + 18px) 28px 40px 28px; max-width: 1600px; margin: 0 auto; }
 .head { display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; margin-bottom: 20px; }
 .head h1 { margin: 0; font-size: 34px; font-weight: 500; letter-spacing: -.03em; line-height: 1.05; }
 .head .sub { color: var(--muted); margin-top: 6px; font-size: 13px; }
@@ -272,7 +272,7 @@ tbody tr:hover td { background: rgba(255, 255, 255, .035); }
   .topbar { padding: 0 14px; padding-top: env(safe-area-inset-top); height: calc(var(--top) + env(safe-area-inset-top)); background: rgba(10, 12, 11, .6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
   .brand { min-width: 0; }
   .brand-name { display: none; }
-  .pills, .rail, #bellBtn { display: none; }
+  .pills, .rail, #bellBtn, .new-btn { display: none; }
   .top-right { margin-left: auto; }
   .avatar { width: 34px; height: 34px; }
   .view { padding: calc(var(--top) + env(safe-area-inset-top) + 14px) 14px calc(96px + env(safe-area-inset-bottom)); }
@@ -316,6 +316,12 @@ tbody tr:hover td { background: rgba(255, 255, 255, .035); }
   .seg .dot { display: none; }
 }
 [hidden] { display: none !important; }
+.new-btn { height: 38px; padding: 0 14px; }
+@media (max-width: 1500px) { .new-btn { width: 38px; padding: 0; justify-content: center; } .new-btn span { display: none; } }
+.f label { display: flex; align-items: center; }
+.f-add { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; color: var(--accent); font-size: 11.5px; padding: 0 2px; }
+.f-add .i { width: 13px; height: 13px; }
+.hint { display: block; color: var(--faint); font-size: 11px; margin-top: 4px; }
 
 /* ---------- Filtros rápidos y columnas ---------- */
 .filters { display: flex; gap: 8px; margin: -4px 0 16px; overflow-x: auto; scrollbar-width: none; align-items: center; }
