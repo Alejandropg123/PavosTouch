@@ -1,6 +1,6 @@
 // Guarda la app en el teléfono para que abra rápido y funcione sin señal.
-const CACHE = 'controlops-v2';
-const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'manifest.webmanifest', 'icon.svg'];
+const CACHE = 'controlops-v3';
+const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'remote.js', 'config.js', 'vendor/supabase.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -10,7 +10,8 @@ self.addEventListener('activate', (e) => {
 });
 // Primero la red (para ver siempre lo último); si no hay señal, lo guardado.
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
+  // Solo los archivos de la propia app; las llamadas a Supabase nunca se guardan en caché.
+  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
     fetch(e.request).then((res) => {
       const copy = res.clone();

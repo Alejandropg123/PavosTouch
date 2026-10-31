@@ -54,8 +54,8 @@ const PALETTE = ['#ffc61a', '#e8e8e8', '#ffd966', '#b5b5b5', '#e0a800', '#8f8f8f
 const colorFor = (id) => PALETTE[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length];
 
 // ---------- Estado ----------
-let db = load();
-const ui = { view: 'resumen', empresa: 'todas', mode: 'group', groupBy: 'vehiculo', gastosBy: 'conductor', q: '', f: { vehiculo: '', conductor: '', cliente: '', etapa: '' }, docFilter: 'alerta', open: new Set() };
+let db = REMOTO ? { consecutivo: {}, clientes: [], vehiculos: [], conductores: [], operaciones: [], gastos: [] } : load();
+const ui = { rol: 'admin', view: 'resumen', empresa: 'todas', mode: 'group', groupBy: 'vehiculo', gastosBy: 'conductor', q: '', f: { vehiculo: '', conductor: '', cliente: '', etapa: '' }, docFilter: 'alerta', open: new Set() };
 
 // El navegador puede bloquear el almacenamiento (modo privado, visores embebidos): la app sigue funcionando en memoria.
 function storeGet() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
@@ -64,7 +64,7 @@ function load() {
   try { const raw = storeGet(); if (raw) return JSON.parse(raw); } catch (e) { /* datos corruptos: se regeneran */ }
   const fresh = seedData(); storeSet(JSON.stringify(fresh)); return fresh;
 }
-const save = () => storeSet(JSON.stringify(db));
+const save = () => (REMOTO ? sincronizar() : storeSet(JSON.stringify(db)));
 
 const byId = (list, id) => db[list].find((x) => x.id === id);
 const cliente = (id) => byId('clientes', id) || { nombre: '—', id: '' };
@@ -145,6 +145,7 @@ function renderChrome() {
   if (innerWidth <= 1500) $$('#empresaSeg .lg').forEach((el, i) => { el.textContent = ['Ambas', ...EMPRESAS.map((e) => e.corto)][i]; });
   const n = alertasPorEntidad().length;
   $('#bellBtn').innerHTML = ico('bell') + (n ? `<span class="badge">${n}</span>` : '');
+  if (REMOTO && sesion.perfil) $('.avatar').textContent = initials(sesion.perfil.nombre || sesion.user.email);
   $('#newBtn').innerHTML = ico('plus') + '<span>Nuevo viaje</span>';
   const bn = [['resumen', 'Inicio', 'home'], ['operaciones', 'Viajes', 'board'], ['new', '', 'plus'], ['documentos', 'Docs', 'file'], ['more', 'Más', 'more']];
   $('#bottomnav').innerHTML = bn.map(([id, n, i]) => id === 'new'
@@ -154,6 +155,7 @@ function renderChrome() {
 
 const empTag = (id) => { const e = empresa(id); return `<span class="emp" style="color:${e.color};border-color:${e.color}55">${e.corto}</span>`; };
 const etapaTag = (id) => { const e = etapa(id); return `<span class="tag"><span class="dot" style="background:${e.color}"></span>${e.nombre}</span>`; };
+const verBtn = (ruta) => (REMOTO && String(ruta).includes('/') ? `<button class="btn ghost sm" data-act="ver" data-ruta="${esc(ruta)}">Ver</button>` : '');
 const docCount = (o) => DOCS_OPERACION.filter(([k]) => o.docs[k]).length;
 
 function stat(icon, val, lbl) {
@@ -585,9 +587,9 @@ function moverEtapa(opId, et) {
   toast(`${o.os} → ${etapa(et).nombre}`);
 }
 
-function toast(msg) {
-  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1800);
+function toast(msg, error = false) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show'); t.classList.toggle('err', error);
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), error ? 4500 : 1800);
 }
 
 // ---------- Drawer / modal ----------
@@ -623,8 +625,8 @@ function opDrawer(id) {
     </div></div>
     <div class="sec"><h5>${ico('file')} Documentos de la operación · ${docCount(o)}/${DOCS_OPERACION.length}</h5><div class="doclist">${DOCS_OPERACION.map(([k, n]) => `
       <div class="doc ${o.docs[k] ? 'has' : ''}"><span class="ic">${o.docs[k] ? ico('check') : ico('file')}</span>
-        <div style="min-width:0"><div class="t">${n}</div><div class="s">${esc(o.docs[k]) || 'Sin adjuntar'}</div></div>
-        <div class="r">${o.docs[k] ? `<button class="btn ghost sm" data-act="doc-del" data-id="${o.id}" data-k="${k}">Quitar</button>` : `<label class="btn ghost sm">${ico('upload')} Subir<input type="file" accept="application/pdf,image/*" hidden data-upload="${o.id}" data-k="${k}"></label>`}</div>
+        <div style="min-width:0"><div class="t">${n}</div><div class="s">${esc(docName(o.docs[k])) || 'Sin adjuntar'}</div></div>
+        <div class="r">${o.docs[k] ? `${verBtn(o.docs[k])}<button class="btn ghost sm" data-act="doc-del" data-id="${o.id}" data-k="${k}">Quitar</button>` : `<label class="btn ghost sm">${ico('upload')} Subir<input type="file" accept="application/pdf,image/*" hidden data-upload="${o.id}" data-k="${k}"></label>`}</div>
       </div>`).join('')}</div></div>
     <div class="sec"><h5>${ico('wallet')} Gastos del conductor</h5>
       ${g ? `<div class="gbox">
@@ -638,7 +640,7 @@ function opDrawer(id) {
       </div>` : `<div class="empty">Sin gastos registrados<br><br><button class="btn ghost sm" data-act="gasto-form" data-id="${o.id}">${ico('plus')} Registrar gastos</button></div>`}
     </div>
   </div>
-  <div class="d-foot"><button class="btn danger" data-act="del-op" data-id="${o.id}">${ico('trash')} Eliminar</button><span class="spacer"></span><button class="btn primary" data-act="edit-op" data-id="${o.id}">${ico('edit')} Editar</button></div>`);
+  <div class="d-foot">${ui.rol === 'admin' ? `<button class="btn danger" data-act="del-op" data-id="${o.id}">${ico('trash')} Eliminar</button>` : ''}<span class="spacer"></span><button class="btn primary" data-act="edit-op" data-id="${o.id}">${ico('edit')} Editar</button></div>`);
 }
 
 function entDrawer(tipo, id) {
@@ -658,8 +660,8 @@ function entDrawer(tipo, id) {
     <div class="sec"><h5>Información</h5><div class="kv">${info.map(([k, v]) => `<div><small>${k}</small>${esc(v)}</div>`).join('')}</div></div>
     <div class="sec"><h5>${ico('file')} Documentos</h5><div class="doclist">${e.docs.map((d, i) => { const st = estadoDoc(d); return `
       <div class="doc ${d.archivo ? 'has' : ''}"><span class="ic">${d.archivo ? ico('check') : ico('file')}</span>
-        <div style="min-width:0"><div class="t">${esc(d.tipo)}</div><div class="s">${esc(d.archivo) || 'Sin adjuntar'}${d.vence ? ' · vence ' + fdate(d.vence) : ''}</div></div>
-        <div class="r"><span class="tag ${st.cls}">${st.txt}</span>
+        <div style="min-width:0"><div class="t">${esc(d.tipo)}</div><div class="s">${esc(docName(d.archivo)) || 'Sin adjuntar'}${d.vence ? ' · vence ' + fdate(d.vence) : ''}</div></div>
+        <div class="r"><span class="tag ${st.cls}">${st.txt}</span>${d.archivo ? verBtn(d.archivo) : ''}
           <label class="btn ghost sm" title="Subir / reemplazar">${ico('upload')}<input type="file" accept="application/pdf,image/*" hidden data-entupload="${tipo}|${id}|${i}"></label></div>
       </div>`; }).join('')}</div></div>
     <div class="sec"><h5>${ico('board')} Operaciones relacionadas</h5><div class="rows">${eo.map((o) => `
@@ -718,16 +720,18 @@ function opForm(id, etapaInicial, draft) {
     const t = $('#opForm input[name="trailer"]');
     if (!t.value) t.value = vehiculo(e.target.value).trailer || '';
   });
-  $('#opForm').addEventListener('submit', (e) => {
+  $('#opForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
     data.flete = +data.flete || 0; data.anticipo = +data.anticipo || 0;
     let op;
     if (id) { op = byId('operaciones', id); Object.assign(op, data); }
     else {
-      const emp = empresa(data.empresa);
-      db.consecutivo[emp.id] = (db.consecutivo[emp.id] || 0) + 1;
-      op = { id: 'o' + Date.now(), os: emp.prefijo + db.consecutivo[emp.id], docs: Object.fromEntries(DOCS_OPERACION.map(([k]) => [k, ''])), ...data };
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      let os;
+      try { os = await siguienteOS(data.empresa); } catch (err) { btn.disabled = false; toast('No se pudo asignar el número de OS: ' + err.message, true); return; }
+      op = { id: uid(), os, docs: Object.fromEntries(DOCS_OPERACION.map(([k]) => [k, ''])), ...data };
       db.operaciones.unshift(op);
     }
     save(); closeModal(); render(); opDrawer(op.id);
@@ -758,7 +762,7 @@ function gastoForm(opId) {
   $('#gForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = Object.fromEntries(new FormData(e.target));
-    const rec = gastoDe(opId) || (db.gastos.push({ id: 'g' + Date.now(), opId, fecha: o.fecha, legalizado: false }), db.gastos[db.gastos.length - 1]);
+    const rec = gastoDe(opId) || (db.gastos.push({ id: uid(), opId, fecha: o.fecha, legalizado: false }), db.gastos[db.gastos.length - 1]);
     CATEGORIAS_GASTO.forEach(([k]) => { rec[k] = +fd[k] || 0; });
     rec.anticipos = [];
     for (let i = 0; i < n; i++) if (+fd['av' + i]) rec.anticipos.push({ valor: +fd['av' + i], fecha: fd['af' + i] || o.fecha });
@@ -803,7 +807,7 @@ function entForm(tipo, id, after) {
       fd.placa = fd.placa.toUpperCase().replace(/\s/g, '');
       if (db.vehiculos.some((v) => v.placa === fd.placa && v.id !== id)) { toast(`La placa ${fd.placa} ya existe`); return; }
     }
-    const r = rec || { id: tipo[0] + Date.now(), docs: docs.map((d) => ({ ...d })) };
+    const r = rec || { id: uid(), docs: docs.map((d) => ({ ...d })) };
     campos.forEach(([k]) => { r[k] = fd[k]; });
     r.docs.forEach((d, i) => { if (!SIN_VENCE.includes(d.tipo)) d.vence = fd['vence' + i] || null; });
     if (!rec) db[tipo].push(r);
@@ -822,11 +826,15 @@ function confirmar(titulo, detalle, okLabel, fn) {
 }
 
 function accountSheet() {
+  const info = REMOTO
+    ? `<div class="s">${esc(sesion.user ? sesion.user.email : '')} · ${ui.rol === 'admin' ? 'Administrador' : 'Operador'}</div>`
+    : '<div class="s">Modo demostración · datos de ejemplo en este navegador</div>';
   openModal(`
-  <div class="d-head"><div><h2>Administrador</h2><div class="s">Vista previa con datos de ejemplo</div></div><button class="icon-btn glass x" data-act="close-modal">${ico('x')}</button></div>
+  <div class="d-head"><div><h2>${esc(REMOTO && sesion.perfil ? sesion.perfil.nombre || 'Mi cuenta' : 'Administrador')}</h2>${info}</div><button class="icon-btn glass x" data-act="close-modal">${ico('x')}</button></div>
   <div class="d-body"><div class="more-sheet">
     <button class="btn ghost" style="height:52px;justify-content:flex-start" data-act="export">${ico('download')} Exportar operaciones (CSV)</button>
-    <button class="btn danger" style="height:52px;justify-content:flex-start" data-act="reset">${ico('reset')} Restablecer datos de ejemplo</button>
+    ${REMOTO ? `<button class="btn danger" style="height:52px;justify-content:flex-start" data-act="logout">${ico('x')} Cerrar sesión</button>`
+    : `<button class="btn danger" style="height:52px;justify-content:flex-start" data-act="reset">${ico('reset')} Restablecer datos de ejemplo</button>`}
   </div></div>`);
   $('#modal').style.width = 'min(440px, calc(100vw - 24px))';
 }
@@ -838,7 +846,8 @@ function moreSheet() {
     ${[['gastos', 'Gastos y anticipos', 'wallet'], ['clientes', 'Clientes', 'building'], ['vehiculos', 'Vehículos', 'truck'], ['conductores', 'Conductores', 'users']]
       .map(([id, n, i]) => `<button class="btn ghost" style="height:52px;justify-content:flex-start" data-act="nav" data-view="${id}">${ico(i)} ${n}</button>`).join('')}
     <button class="btn ghost" style="height:52px;justify-content:flex-start" data-act="export">${ico('download')} Exportar operaciones (CSV)</button>
-    <button class="btn danger" style="height:52px;justify-content:flex-start" data-act="reset">${ico('reset')} Restablecer datos de ejemplo</button>
+    ${REMOTO ? `<button class="btn danger" style="height:52px;justify-content:flex-start" data-act="logout">${ico('x')} Cerrar sesión</button>`
+    : `<button class="btn danger" style="height:52px;justify-content:flex-start" data-act="reset">${ico('reset')} Restablecer datos de ejemplo</button>`}
   </div></div>`);
 }
 
@@ -912,10 +921,14 @@ document.addEventListener('click', (e) => {
     }
     case 'back-op': if (opForm.draft) opForm(opForm.draft.opId, null, opForm.draft.draft); else closeModal(); break;
     case 'account': accountSheet(); break;
+    case 'ver': verArchivo(el.dataset.ruta); break;
+    case 'olvide': olvideClave(); break;
+    case 'logout': cerrarSesion(); break;
     case 'more': moreSheet(); break;
     case 'export': exportCSV(); break;
     case 'focus-search': if (ui.view !== 'operaciones') { ui.view = 'operaciones'; render(); } $('#q').focus(); break;
     case 'reset':
+      if (REMOTO) break;
       confirmar('¿Restablecer los datos de ejemplo?', 'Se perderán los cambios hechos en este navegador.', 'Restablecer', () => {
         db = seedData(); save(); closeAll(); render(); toast('Datos de ejemplo restablecidos');
       });
@@ -940,19 +953,34 @@ document.addEventListener('change', (e) => {
   }
   const file = inp.files && inp.files[0];
   if (!file) return;
-  if (inp.dataset.upload) {
-    byId('operaciones', inp.dataset.upload).docs[inp.dataset.k] = file.name;
-    save(); render(); opDrawer(inp.dataset.upload); toast('Documento adjuntado');
-  } else if (inp.dataset.entupload) {
-    const [tipo, id, i] = inp.dataset.entupload.split('|');
-    byId(tipo, id).docs[+i].archivo = file.name;
-    save(); render(); entDrawer(tipo, id); toast('Documento adjuntado');
-  }
+  subirDesdeInput(inp, file);
 });
+
+async function subirDesdeInput(inp, file) {
+  if (file.size > 20 * 1024 * 1024) { toast('El archivo pesa más de 20 MB', true); return; }
+  toast('Subiendo documento…');
+  try {
+    if (inp.dataset.upload) {
+      const o = byId('operaciones', inp.dataset.upload);
+      o.docs = { ...o.docs, [inp.dataset.k]: await subirArchivo(`operaciones/${o.id}/${inp.dataset.k}`, file) };
+      save(); render(); opDrawer(o.id);
+    } else if (inp.dataset.entupload) {
+      const [tipo, id, i] = inp.dataset.entupload.split('|');
+      const e = byId(tipo, id);
+      const docs = e.docs.map((d) => ({ ...d }));
+      docs[+i].archivo = await subirArchivo(`${tipo}/${id}`, file);
+      e.docs = docs;
+      save(); render(); entDrawer(tipo, id);
+    }
+    toast('Documento adjuntado');
+  } catch (err) {
+    toast('No se pudo subir: ' + err.message, true);
+  }
+}
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
 const ancho = () => innerWidth <= 900 ? 0 : innerWidth <= 1500 ? 1 : 2;
 let lastNarrow = ancho();
 addEventListener('resize', () => { const n = ancho(); if (n !== lastNarrow) { lastNarrow = n; render(); } });
 
-render();
+iniciar();
