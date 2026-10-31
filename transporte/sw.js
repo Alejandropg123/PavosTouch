@@ -1,5 +1,5 @@
 // Guarda la app en el teléfono para que abra rápido y funcione sin señal.
-const CACHE = 'controlops-v1';
+const CACHE = 'controlops-v2';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

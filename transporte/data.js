@@ -2,15 +2,15 @@
 // En la versión final esto vendrá de la base de datos (Supabase).
 
 const EMPRESAS = [
-  { id: 'llano', nombre: 'Llano Carga', corto: 'Llano', prefijo: '00-', color: '#c6f432' },
-  { id: 'jf', nombre: 'Jorge Fonseca', corto: 'JF', prefijo: 'JF-', color: '#7cc7ff' },
+  { id: 'llano', nombre: 'Llano Carga', corto: 'Llano', prefijo: '00-', color: '#ffc61a' },
+  { id: 'jf', nombre: 'Jorge Fonseca', corto: 'JF', prefijo: 'JF-', color: '#e6e6e6' },
 ];
 
 const ETAPAS = [
-  { id: 'pendiente', nombre: 'Pendiente', color: '#8ea6ff' },
-  { id: 'acta', nombre: 'Pendiente de acta', color: '#e9c46a' },
-  { id: 'finalizado', nombre: 'Finalizado', color: '#f4978e' },
-  { id: 'facturado', nombre: 'Facturado', color: '#7ee2a8' },
+  { id: 'pendiente', nombre: 'Pendiente', color: '#d4d4d4' },
+  { id: 'acta', nombre: 'Pendiente de acta', color: '#ffc61a' },
+  { id: 'finalizado', nombre: 'Finalizado', color: '#ff8a3d' },
+  { id: 'facturado', nombre: 'Facturado', color: '#5ad18a' },
 ];
 
 const DOCS_OPERACION = [

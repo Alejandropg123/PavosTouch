@@ -28,6 +28,7 @@ const ICONS = {
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
   more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  chev: '<path d="m9 6 6 6-6 6"/>',
   building: '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M10 21v-3h4v3"/>',
 };
 const ico = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
@@ -37,6 +38,7 @@ const COP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP',
 const money = (n) => COP.format(n || 0);
 const short = (n) => {
   n = n || 0;
+  if (n < 0) return '-' + short(-n);
   if (Math.abs(n) >= 1e6) return '$' + (n / 1e6).toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' M';
   if (Math.abs(n) >= 1e3) return '$' + Math.round(n / 1e3) + ' mil';
   return '$' + n;
@@ -46,12 +48,12 @@ const fdateS = (iso) => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const daysTo = (iso) => Math.round((new Date(iso + 'T12:00:00') - new Date(todayISO() + 'T12:00:00')) / 864e5);
 const initials = (name) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-const PALETTE = ['#c6f432', '#7cc7ff', '#f4978e', '#e9c46a', '#b9a3ff', '#7ee2a8', '#ffb86b'];
+const PALETTE = ['#ffc61a', '#e8e8e8', '#ffd966', '#b5b5b5', '#e0a800', '#8f8f8f', '#fff0b3'];
 const colorFor = (id) => PALETTE[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length];
 
 // ---------- Estado ----------
 let db = load();
-const ui = { view: 'resumen', empresa: 'todas', mode: 'board', q: '', conductor: null, docFilter: 'alerta' };
+const ui = { view: 'resumen', empresa: 'todas', mode: 'group', groupBy: 'vehiculo', gastosBy: 'conductor', q: '', conductor: null, docFilter: 'alerta', open: new Set() };
 
 // El navegador puede bloquear el almacenamiento (modo privado, visores embebidos): la app sigue funcionando en memoria.
 function storeGet() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
@@ -109,6 +111,16 @@ function estadoDoc(d) {
 }
 const alertasDocs = () => todosDocs().filter((d) => estadoDoc(d).rank <= 2);
 
+// Alertas agrupadas: una entrada por vehículo / conductor / cliente
+function alertasPorEntidad() {
+  const out = [];
+  ['vehiculos', 'conductores', 'clientes'].forEach((tipo) => db[tipo].forEach((e) => {
+    const docs = e.docs.filter((d) => estadoDoc(d).rank <= 2).sort((a, b) => estadoDoc(a).rank - estadoDoc(b).rank);
+    if (docs.length) out.push({ tipo, e, docs, rank: Math.min(...docs.map((d) => estadoDoc(d).rank)) });
+  }));
+  return out.sort((a, b) => a.rank - b.rank || b.docs.length - a.docs.length);
+}
+
 // ---------- Componentes ----------
 const NAV = [
   ['resumen', 'Resumen', 'home'],
@@ -126,7 +138,7 @@ function renderChrome() {
   $('#empresaSeg').innerHTML = [['todas', 'Ambas', '']].concat(EMPRESAS.map((e) => [e.id, e.nombre, e.color]))
     .map(([id, n, c]) => `<button class="${ui.empresa === id ? 'on' : ''}" data-act="empresa" data-id="${id}">${c ? `<span class="dot" style="background:${c}"></span>` : ''}<span class="lg">${n}</span></button>`).join('');
   if (innerWidth <= 900) $$('#empresaSeg .lg').forEach((el, i) => { el.textContent = ['Ambas', ...EMPRESAS.map((e) => e.corto)][i]; });
-  const n = alertasDocs().length;
+  const n = alertasPorEntidad().length;
   $('#bellBtn').innerHTML = ico('bell') + (n ? `<span class="badge">${n}</span>` : '');
   $('#rail').innerHTML = `
     <button class="accent" data-act="new-op" title="Nueva operación">${ico('plus')}</button>
@@ -161,7 +173,7 @@ views.resumen = () => {
   const delMes = ops.filter((o) => o.fecha.startsWith(mes));
   const activas = ops.filter((o) => o.etapa === 'pendiente' || o.etapa === 'acta');
   const porFacturar = ops.filter((o) => o.etapa === 'finalizado');
-  const alertas = alertasDocs().sort((a, b) => estadoDoc(a).rank - estadoDoc(b).rank || (a.vence || '').localeCompare(b.vence || ''));
+  const alertas = alertasPorEntidad();
   const maxEt = Math.max(1, ...ETAPAS.map((e) => ops.filter((o) => o.etapa === e.id).length));
   const saldoCond = db.gastos.filter((g) => !g.legalizado && ops.some((o) => o.id === g.opId)).length;
   const hoy = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -172,7 +184,7 @@ views.resumen = () => {
     <div class="kpi glass hl"><div class="lbl">${ico('route')} Operaciones activas</div><div class="val">${activas.length}</div><div class="hint">Pendientes y pendientes de acta</div></div>
     <div class="kpi glass"><div class="lbl">${ico('trend')} Flete del mes</div><div class="val">${short(delMes.reduce((t, o) => t + o.flete, 0))}</div><div class="hint">${delMes.length} operaciones en ${new Date().toLocaleDateString('es-CO', { month: 'long' })}</div></div>
     <div class="kpi glass"><div class="lbl">${ico('money')} Por facturar</div><div class="val">${short(porFacturar.reduce((t, o) => t + o.flete, 0))}</div><div class="hint">${porFacturar.length} finalizadas sin factura</div></div>
-    <div class="kpi glass"><div class="lbl">${ico('alert')} Documentos en alerta</div><div class="val" style="color:${alertas.length ? 'var(--warn)' : 'inherit'}">${alertas.length}</div><div class="hint">Vencidos, por vencer o faltantes</div></div>
+    <div class="kpi glass"><div class="lbl">${ico('alert')} Alertas de documentos</div><div class="val" style="color:${alertas.length ? 'var(--warn)' : 'inherit'}">${alertas.length}</div><div class="hint">${alertas.filter((a) => a.tipo === 'vehiculos').length} vehículos · ${alertas.filter((a) => a.tipo === 'conductores').length} conductores · ${alertas.filter((a) => a.tipo === 'clientes').length} clientes</div></div>
   </div>
   <div class="grid2">
     <div style="display:flex;flex-direction:column;gap:14px">
@@ -198,12 +210,8 @@ views.resumen = () => {
     </div>
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="panel glass">
-        <h3>${ico('alert')} Documentos por vencer<span class="spacer"></span><button class="link" data-act="nav" data-view="documentos">Ver todos →</button></h3>
-        <div class="rows">${alertas.slice(0, 8).map((d) => { const st = estadoDoc(d); return `
-          <div class="row" data-act="ent" data-tipo="${d.tipoEnt}" data-id="${d.ent.id}">
-            <div style="min-width:0"><div class="t">${esc(d.tipo)}</div><div class="s">${esc(d.nombre)}</div></div>
-            <div class="r"><span class="tag ${st.cls}">${st.txt}</span></div>
-          </div>`; }).join('') || '<div class="empty">Todo al día 🎉</div>'}
+        <h3>${ico('alert')} Alertas de documentos<span class="spacer"></span><button class="link" data-act="nav" data-view="documentos">Ver todas →</button></h3>
+        <div class="rows">${alertas.slice(0, 7).map(alertaRow).join('') || '<div class="empty">Todo al día 🎉</div>'}
         </div>
       </div>
       <div class="panel glass">
@@ -234,15 +242,9 @@ views.operaciones = () => {
     </div>`;
   }).join('')}</div>`;
 
-  const list = `<div class="table-wrap glass"><table>
-    <thead><tr><th>Fecha</th><th>OS</th><th>Empresa</th><th>Estado</th><th>Facturación</th><th>Placa</th><th>Ruta</th><th>Carga</th><th>Cliente</th><th>Conductor</th><th>Remesa</th><th>Manifiesto</th><th class="num">Flete</th><th class="num">Anticipo</th><th>Docs</th><th>Factura</th></tr></thead>
-    <tbody>${ops.map((o) => `<tr data-act="op" data-id="${o.id}">
-      <td>${fdate(o.fecha)}</td><td><b>${esc(o.os)}</b></td><td>${empTag(o.empresa)}</td><td>${etapaTag(o.etapa === 'facturado' ? 'finalizado' : o.etapa)}</td>
-      <td>${o.etapa === 'facturado' ? '<span class="tag ok">Facturada</span>' : '<span class="tag warn">Pendiente facturar</span>'}</td>
-      <td><span class="plate">${esc(vehiculo(o.vehiculoId).placa)}</span></td><td>${esc(o.origen)} → ${esc(o.destino)}</td><td>${esc(o.carga)}</td>
-      <td>${esc(cliente(o.clienteId).nombre)}</td><td>${esc(conductor(o.conductorId).nombre)}</td><td>${esc(o.remesa)}</td><td>${esc(o.manifiesto)}</td>
-      <td class="num">${money(o.flete)}</td><td class="num">${money(o.anticipo)}</td><td>${docCount(o)}/${DOCS_OPERACION.length}</td><td>${esc(o.facturaNo) || '—'}</td>
-    </tr>`).join('') || '<tr><td colspan="16"><div class="empty">Sin resultados</div></td></tr>'}</tbody></table></div>`;
+  const list = tablaCompleta(ops);
+  const groupBar = ui.mode === 'group' ? `<div class="toolbar"><span class="lbl-s">Agrupar por</span><div class="toggle glass">${['vehiculo', 'cliente', 'conductor'].map((k) => `<button class="${ui.groupBy === k ? 'on' : ''}" data-act="groupby" data-id="${k}">${AGRUPAR[k].n}</button>`).join('')}</div>
+    <span class="spacer"></span><button class="link" data-act="grp-all">${ui.open.size ? 'Cerrar todo' : 'Abrir todo'}</button></div>` : '';
 
   return `
   <div class="head">
@@ -255,13 +257,14 @@ views.operaciones = () => {
   </div>
   <div class="toolbar">
     <label class="search glass">${ico('search')}<input id="q" placeholder="Buscar OS, placa, cliente, manifiesto…" value="${esc(ui.q)}"></label>
-    <div class="chips">${conductoresActivos.map((p) => `<button class="chip glass ${ui.conductor === p.id ? 'on' : ''}" data-act="chip" data-id="${p.id}"><span class="ini" style="background:${colorFor(p.id)}">${initials(p.nombre)}</span>${esc(p.nombre.split(' ')[0])}</button>`).join('')}</div>
+    <div class="chips" ${ui.mode === 'group' ? 'hidden' : ''}>${conductoresActivos.map((p) => `<button class="chip glass ${ui.conductor === p.id ? 'on' : ''}" data-act="chip" data-id="${p.id}"><span class="ini" style="background:${colorFor(p.id)}">${initials(p.nombre)}</span>${esc(p.nombre.split(' ')[0])}</button>`).join('')}</div>
     <span class="spacer"></span>
-    <div class="toggle glass"><button class="${ui.mode === 'board' ? 'on' : ''}" data-act="mode" data-mode="board">Tablero</button><button class="${ui.mode === 'list' ? 'on' : ''}" data-act="mode" data-mode="list">Lista</button></div>
+    <div class="toggle glass">${[['group', 'Agrupado'], ['board', 'Tablero'], ['list', 'Lista']].map(([m, n]) => `<button class="${ui.mode === m ? 'on' : ''}" data-act="mode" data-mode="${m}">${n}</button>`).join('')}</div>
     <button class="icon-btn glass hide-m" data-act="export" title="Exportar a Excel (CSV)">${ico('download')}</button>
     <button class="btn primary hide-m" data-act="new-op">${ico('plus')} Nueva operación</button>
   </div>
-  ${ui.mode === 'board' ? board : list}`;
+  ${groupBar}
+  ${ui.mode === 'board' ? board : ui.mode === 'list' ? list : opsAgrupadas(ops)}`;
 };
 
 function card(o) {
@@ -280,21 +283,104 @@ function card(o) {
   </div>`;
 }
 
+// ---------- Agrupación ----------
+const AGRUPAR = {
+  vehiculo: { n: 'Placa', key: 'vehiculoId', tipo: 'vehiculos' },
+  cliente: { n: 'Cliente', key: 'clienteId', tipo: 'clientes' },
+  conductor: { n: 'Conductor', key: 'conductorId', tipo: 'conductores' },
+};
+const KEY_DE = { clientes: 'clienteId', vehiculos: 'vehiculoId', conductores: 'conductorId' };
+const TIPO_N = { clientes: 'Cliente', vehiculos: 'Vehículo', conductores: 'Conductor' };
+const TIPO_ICO = { clientes: 'building', vehiculos: 'truck', conductores: 'user' };
+
+const opsDe = (tipo, id) => opsEmpresa().filter((o) => o[KEY_DE[tipo]] === id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+const entTitulo = (tipo, e) => tipo === 'vehiculos' ? `<span class="plate">${esc(e.placa)}</span>` : `<b>${esc(e.nombre)}</b>`;
+const uniq = (arr) => [...new Set(arr)];
+const viajes = (n, plano) => (plano ? n : `<b>${n}</b>`) + (n === 1 ? ' viaje' : ' viajes');
+
+// Una sola pastilla por ficha en lugar de una por documento
+function docsPill(e) {
+  const al = e.docs.filter((d) => estadoDoc(d).rank <= 2);
+  if (!al.length) return `<span class="tag ok">${ico('check')} Al día</span>`;
+  const cls = al.some((d) => estadoDoc(d).cls === 'bad') ? 'bad' : 'warn';
+  return `<span class="tag ${cls}">${ico('alert')} ${al.length} ${al.length === 1 ? 'alerta' : 'alertas'}</span>`;
+}
+
+function grupo(key, head, body) {
+  return `<div class="grp glass ${ui.open.has(key) ? 'open' : ''}">
+    <div class="grp-h" data-act="grp" data-key="${esc(key)}">${ico('chev', 'chev')}${head}</div>
+    <div class="grp-b">${body}</div></div>`;
+}
+
+function opRow(o, ocultar = '') {
+  const et = etapa(o.etapa);
+  const extra = [
+    ocultar !== 'vehiculo' ? esc(vehiculo(o.vehiculoId).placa) : '',
+    ocultar !== 'cliente' ? esc(cliente(o.clienteId).nombre) : '',
+    ocultar !== 'conductor' ? esc(conductor(o.conductorId).nombre) : '',
+  ].filter(Boolean).join(' · ');
+  return `<div class="row" data-act="op" data-id="${o.id}">
+    <span class="sdot" style="background:${et.color}" title="${et.nombre}"></span>
+    <div style="min-width:0"><div class="t">${esc(o.origen)} → ${esc(o.destino)}</div><div class="s">${esc(o.os)} · ${fdateS(o.fecha)} · ${extra}</div></div>
+    <div class="r"><div class="t">${short(o.flete)}</div><div class="s">${et.nombre}</div></div></div>`;
+}
+
+function opsAgrupadas(ops) {
+  const g = AGRUPAR[ui.groupBy];
+  const grupos = db[g.tipo].map((e) => ({ e, list: ops.filter((o) => o[g.key] === e.id) })).filter((x) => x.list.length)
+    .sort((a, b) => b.list.length - a.list.length);
+  if (!grupos.length) return '<div class="empty">Sin resultados</div>';
+  return `<div class="grps">${grupos.map(({ e, list }) => {
+    const activas = list.filter((o) => o.etapa === 'pendiente' || o.etapa === 'acta').length;
+    const porFact = list.filter((o) => o.etapa === 'finalizado').length;
+    const sub = g.tipo === 'vehiculos' ? `${esc(e.modelo)} · ${esc(conductor(list[0].conductorId).nombre)}`
+      : g.tipo === 'clientes' ? `${esc(e.ciudad)} · ${uniq(list.map((o) => vehiculo(o.vehiculoId).placa)).length} placas`
+        : uniq(list.map((o) => vehiculo(o.vehiculoId).placa)).join(' · ');
+    const head = `<div class="gt"><div style="min-width:0">${entTitulo(g.tipo, e)}<small>${sub}</small></div></div>
+      <div class="gm"><span class="m">${viajes(list.length)}</span><span class="m"><b>${short(list.reduce((t, o) => t + o.flete, 0))}</b></span>
+      ${activas ? `<span class="tag hide-s">${activas} en curso</span>` : ''}${porFact ? `<span class="tag warn hide-s">${porFact} por facturar</span>` : ''}${docsPill(e)}</div>`;
+    const body = `<div class="rows">${list.map((o) => opRow(o, ui.groupBy)).join('')}</div>
+      <div class="grp-f"><button class="btn ghost sm" data-act="ent" data-tipo="${g.tipo}" data-id="${e.id}">Ver ficha de ${esc(g.tipo === 'vehiculos' ? e.placa : e.nombre.split(' ')[0])}</button></div>`;
+    return grupo(`ops-${ui.groupBy}-${e.id}`, head, body);
+  }).join('')}</div>`;
+}
+
+function tablaCompleta(ops) {
+  return `<div class="table-wrap glass"><table>
+    <thead><tr><th>Fecha</th><th>OS</th><th>Empresa</th><th>Estado</th><th>Facturación</th><th>Placa</th><th>Ruta</th><th>Carga</th><th>Cliente</th><th>Conductor</th><th>Remesa</th><th>Manifiesto</th><th class="num">Flete</th><th class="num">Anticipo</th><th>Docs</th><th>Factura</th></tr></thead>
+    <tbody>${ops.map((o) => `<tr data-act="op" data-id="${o.id}">
+      <td>${fdate(o.fecha)}</td><td><b>${esc(o.os)}</b></td><td>${empTag(o.empresa)}</td><td>${etapaTag(o.etapa === 'facturado' ? 'finalizado' : o.etapa)}</td>
+      <td>${o.etapa === 'facturado' ? '<span class="tag ok">Facturada</span>' : '<span class="tag warn">Pendiente facturar</span>'}</td>
+      <td><span class="plate">${esc(vehiculo(o.vehiculoId).placa)}</span></td><td>${esc(o.origen)} → ${esc(o.destino)}</td><td>${esc(o.carga)}</td>
+      <td>${esc(cliente(o.clienteId).nombre)}</td><td>${esc(conductor(o.conductorId).nombre)}</td><td>${esc(o.remesa)}</td><td>${esc(o.manifiesto)}</td>
+      <td class="num">${money(o.flete)}</td><td class="num">${money(o.anticipo)}</td><td>${docCount(o)}/${DOCS_OPERACION.length}</td><td>${esc(o.facturaNo) || '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="16"><div class="empty">Sin resultados</div></td></tr>'}</tbody></table></div>`;
+}
+
+function alertaRow({ tipo, e, docs }) {
+  const worst = estadoDoc(docs[0]);
+  return `<div class="row" data-act="ent" data-tipo="${tipo}" data-id="${e.id}">
+    <span class="ric">${ico(TIPO_ICO[tipo])}</span>
+    <div style="min-width:0"><div class="t">${entTitulo(tipo, e)}</div><div class="s">${docs.map((d) => esc(d.tipo)).join(' · ')}</div></div>
+    <div class="r"><span class="tag ${worst.cls}">${docs.length > 1 ? `${docs.length} docs` : worst.txt}</span></div></div>`;
+}
+
+const docRow = (d, upload = '') => { const st = estadoDoc(d); return `
+  <div class="mini"><span class="sdot" style="background:var(--${st.cls})"></span><span class="t">${esc(d.tipo)}</span>
+    <span class="r"><span class="tag ${st.cls}">${st.txt}</span>${upload}</span></div>`; };
+
+// ---------- Gastos ----------
 views.gastos = () => {
   const ops = opsEmpresa();
   const rows = db.gastos.map((g) => ({ g, o: ops.find((o) => o.id === g.opId) })).filter((r) => r.o)
     .sort((a, b) => b.o.fecha.localeCompare(a.o.fecha));
   const tot = rows.reduce((t, { g }) => { const x = totalesGasto(g); t.g += x.gastos; t.a += x.anticipos; return t; }, { g: 0, a: 0 });
-  return `
-  <div class="head">
-    <div><h1>Gastos y anticipos</h1><div class="sub">Una fila por operación · legalización del conductor</div></div>
-    <div class="stats">
-      ${stat('wallet', short(tot.g), 'Total gastos')}
-      ${stat('money', short(tot.a), 'Total anticipos')}
-      ${stat('alert', rows.filter((r) => !r.g.legalizado).length, 'Sin legalizar')}
-    </div>
-  </div>
-  <div class="table-wrap glass"><table>
+  const toggle = `<div class="toolbar"><span class="lbl-s">Agrupar por</span><div class="toggle glass">${[['conductor', 'Conductor'], ['vehiculo', 'Placa'], ['ninguno', 'Sin agrupar']]
+    .map(([k, n]) => `<button class="${ui.gastosBy === k ? 'on' : ''}" data-act="gastosby" data-id="${k}">${n}</button>`).join('')}</div></div>`;
+
+  let body;
+  if (ui.gastosBy === 'ninguno') {
+    body = `<div class="table-wrap glass"><table>
     <thead><tr><th>Fecha</th><th>OS</th><th>Conductor</th><th>Placa</th>${CATEGORIAS_GASTO.map(([, n]) => `<th class="num">${n}</th>`).join('')}<th class="num">Total gastos</th><th class="num">Anticipos</th><th class="num">Diferencia</th><th>Estado</th></tr></thead>
     <tbody>${rows.map(({ g, o }) => { const t = totalesGasto(g); return `<tr data-act="op" data-id="${o.id}">
       <td>${fdate(g.fecha)}</td><td><b>${esc(o.os)}</b></td><td>${esc(conductor(o.conductorId).nombre)}</td><td><span class="plate">${esc(vehiculo(o.vehiculoId).placa)}</span></td>
@@ -302,47 +388,96 @@ views.gastos = () => {
       <td class="num"><b>${money(t.gastos)}</b></td><td class="num">${money(t.anticipos)}</td>
       <td class="num ${t.diferencia < 0 ? 'neg' : t.diferencia > 0 ? 'pos' : ''}">${money(t.diferencia)}</td>
       <td>${g.legalizado ? '<span class="tag ok">Legalizado</span>' : '<span class="tag warn">Pendiente</span>'}</td></tr>`; }).join('') || '<tr><td colspan="16"><div class="empty">Sin gastos registrados</div></td></tr>'}</tbody>
-  </table></div>`;
+    </table></div>`;
+  } else {
+    const tipo = ui.gastosBy === 'conductor' ? 'conductores' : 'vehiculos';
+    const key = KEY_DE[tipo];
+    body = `<div class="grps">${db[tipo].map((e) => ({ e, list: rows.filter((r) => r.o[key] === e.id) })).filter((x) => x.list.length).map(({ e, list }) => {
+      const t = list.reduce((a, { g }) => { const x = totalesGasto(g); a.g += x.gastos; a.a += x.anticipos; return a; }, { g: 0, a: 0 });
+      const pend = list.filter((r) => !r.g.legalizado).length;
+      const dif = t.a - t.g;
+      const head = `<div class="gt"><div style="min-width:0">${entTitulo(tipo, e)}<small>${list.length === 1 ? '1 viaje' : list.length + ' viajes'} con gastos</small></div></div>
+        <div class="gm"><span class="m hide-s">Gastos <b>${short(t.g)}</b></span><span class="m hide-s">Anticipos <b>${short(t.a)}</b></span>
+        <span class="m ${dif < 0 ? 'neg' : 'pos'}"><b>${short(dif)}</b></span>${pend ? `<span class="tag warn">${pend} sin legalizar</span>` : '<span class="tag ok">Legalizado</span>'}</div>`;
+      const inner = `<div class="rows">${list.map(({ g, o }) => { const x = totalesGasto(g); return `
+        <div class="row" data-act="op" data-id="${o.id}"><span class="sdot" style="background:var(--${g.legalizado ? 'ok' : 'warn'})"></span>
+          <div style="min-width:0"><div class="t">${esc(o.os)} · ${esc(o.origen)} → ${esc(o.destino)}</div><div class="s">${fdateS(o.fecha)} · ${tipo === 'conductores' ? esc(vehiculo(o.vehiculoId).placa) : esc(conductor(o.conductorId).nombre)} · gastos ${money(x.gastos)} · anticipos ${money(x.anticipos)}</div></div>
+          <div class="r"><div class="t ${x.diferencia < 0 ? 'neg' : 'pos'}">${money(x.diferencia)}</div><div class="s">${g.legalizado ? 'Legalizado' : 'Pendiente'}</div></div></div>`; }).join('')}</div>`;
+      return grupo(`gas-${ui.gastosBy}-${e.id}`, head, inner);
+    }).join('') || '<div class="empty">Sin gastos registrados</div>'}</div>`;
+  }
+
+  return `
+  <div class="head">
+    <div><h1>Gastos y anticipos</h1><div class="sub">Legalización por conductor y por vehículo</div></div>
+    <div class="stats">
+      ${stat('wallet', short(tot.g), 'Total gastos')}
+      ${stat('money', short(tot.a), 'Total anticipos')}
+      ${stat('alert', rows.filter((r) => !r.g.legalizado).length, 'Sin legalizar')}
+    </div>
+  </div>${toggle}${body}`;
 };
 
-function entCards(tipo) {
-  const ops = opsEmpresa();
-  const key = { clientes: 'clienteId', vehiculos: 'vehiculoId', conductores: 'conductorId' }[tipo];
-  return `<div class="cards-grid">${db[tipo].map((e) => {
-    const eo = ops.filter((o) => o[key] === e.id);
-    const title = tipo === 'vehiculos' ? `<span class="plate" style="font-size:14px">${esc(e.placa)}</span>` : esc(e.nombre);
-    const sub = tipo === 'clientes' ? `NIT ${esc(e.nit)} · ${esc(e.ciudad)}` : tipo === 'vehiculos' ? `${esc(e.tipo)} · ${esc(e.modelo)}` : `C.C. ${esc(e.cedula)} · ${esc(e.telefono)}`;
-    const big = tipo === 'vehiculos' ? ico('truck') : tipo === 'clientes' ? ico('building') : initials(e.nombre);
-    const alert = e.docs.filter((d) => estadoDoc(d).rank <= 2);
-    return `<div class="ent glass" data-act="ent" data-tipo="${tipo}" data-id="${e.id}">
-      <div class="top"><span class="big" style="background:${colorFor(e.id)}22;color:${colorFor(e.id)}">${big}</span><div style="min-width:0"><h4>${title}</h4><div class="s">${sub}</div></div></div>
-      <div class="nums"><div><b>${eo.length}</b><small>Operaciones</small></div><div><b>${short(eo.reduce((t, o) => t + o.flete, 0))}</b><small>Flete total</small></div><div><b style="color:${alert.length ? 'var(--warn)' : 'var(--ok)'}">${e.docs.length - alert.length}/${e.docs.length}</b><small>Docs al día</small></div></div>
-      <div class="docs">${alert.length ? alert.map((d) => `<span class="tag ${estadoDoc(d).cls}">${esc(d.tipo)}: ${estadoDoc(d).txt}</span>`).join('') : '<span class="tag ok">Documentación al día</span>'}</div>
-    </div>`;
+// ---------- Vehículos, conductores y clientes (agrupados) ----------
+function entGrupos(tipo) {
+  return `<div class="grps">${db[tipo].map((e) => {
+    const eo = opsDe(tipo, e.id);
+    const placas = uniq(eo.map((o) => o.vehiculoId)).map((id) => vehiculo(id));
+    const conds = uniq(eo.map((o) => o.conductorId)).map((id) => conductor(id));
+    const activas = eo.filter((o) => o.etapa === 'pendiente' || o.etapa === 'acta');
+    let sub;
+    if (tipo === 'vehiculos') sub = `${esc(e.modelo)}${eo[0] ? ' · ' + esc(conductor(eo[0].conductorId).nombre) : ''}`;
+    else if (tipo === 'conductores') sub = placas.map((v) => esc(v.placa)).join(' · ') || 'Sin viajes';
+    else sub = `NIT ${esc(e.nit)} · ${esc(e.ciudad)}`;
+    const head = `<div class="gt">${tipo === 'conductores' ? `<span class="ini" style="background:${colorFor(e.id)}">${initials(e.nombre)}</span>` : ''}<div style="min-width:0">${entTitulo(tipo, e)}<small>${sub}</small></div></div>
+      <div class="gm"><span class="m">${viajes(eo.length)}</span><span class="m hide-s"><b>${short(eo.reduce((t, o) => t + o.flete, 0))}</b></span>
+      ${activas.length ? `<span class="tag hide-s">${activas.length} en curso</span>` : ''}${docsPill(e)}</div>`;
+
+    // Relación: vehículo ↔ conductores, conductor ↔ placas, cliente ↔ placas
+    const relTipo = tipo === 'vehiculos' ? 'conductores' : 'vehiculos';
+    const rel = tipo === 'vehiculos' ? conds : placas;
+    const relHtml = rel.map((r) => `<div class="mini click" data-act="ent" data-tipo="${relTipo}" data-id="${r.id}">
+        ${relTipo === 'vehiculos' ? `<span class="plate">${esc(r.placa)}</span>` : `<span class="ini" style="background:${colorFor(r.id)}">${initials(r.nombre)}</span><span class="t">${esc(r.nombre)}</span>`}
+        <span class="r"><span class="s">${viajes(eo.filter((o) => o[KEY_DE[relTipo]] === r.id).length, true)}</span>${docsPill(r)}</span></div>`).join('') || '<div class="empty">—</div>';
+
+    const body = `<div class="gcols">
+        <div><h5>${ico('file')} Documentos</h5>${e.docs.map((d) => docRow(d)).join('')}</div>
+        <div><h5>${ico(TIPO_ICO[relTipo])} ${tipo === 'vehiculos' ? 'Conductores' : 'Vehículos (placas)'}</h5>${relHtml}</div>
+      </div>
+      <h5>${ico('board')} Últimos viajes</h5><div class="rows">${eo.slice(0, 5).map((o) => opRow(o, tipo === 'vehiculos' ? 'vehiculo' : tipo === 'clientes' ? 'cliente' : 'conductor')).join('') || '<div class="empty">Sin viajes</div>'}</div>
+      <div class="grp-f"><button class="btn ghost sm" data-act="ent" data-tipo="${tipo}" data-id="${e.id}">Ver ficha completa${eo.length > 5 ? ` (${eo.length} viajes)` : ''}</button></div>`;
+    return grupo(`${tipo}-${e.id}`, head, body);
   }).join('')}</div>`;
 }
 const entHead = (t, s, btn) => `<div class="head"><div><h1>${t}</h1><div class="sub">${s}</div></div><span class="spacer"></span>${btn}</div>`;
-views.clientes = () => entHead('Clientes', `${db.clientes.length} clientes · toca uno para ver sus viajes y documentos`, `<button class="btn primary" data-act="new-ent" data-tipo="clientes">${ico('plus')} Nuevo cliente</button>`) + entCards('clientes');
-views.vehiculos = () => entHead('Vehículos', `${db.vehiculos.length} vehículos · SOAT, tecnicomecánica y pólizas`, `<button class="btn primary" data-act="new-ent" data-tipo="vehiculos">${ico('plus')} Nuevo vehículo</button>`) + entCards('vehiculos');
-views.conductores = () => entHead('Conductores', `${db.conductores.length} conductores · licencias y seguridad social`, `<button class="btn primary" data-act="new-ent" data-tipo="conductores">${ico('plus')} Nuevo conductor</button>`) + entCards('conductores');
+const abrirTodo = () => `<div class="toolbar"><span class="spacer"></span><button class="link" data-act="grp-all">${ui.open.size ? 'Cerrar todo' : 'Abrir todo'}</button></div>`;
+views.vehiculos = () => entHead('Vehículos', `${db.vehiculos.length} placas · documentos, conductores y viajes de cada una`, `<button class="btn primary" data-act="new-ent" data-tipo="vehiculos">${ico('plus')} Nuevo vehículo</button>`) + abrirTodo() + entGrupos('vehiculos');
+views.conductores = () => entHead('Conductores', `${db.conductores.length} conductores · licencias, placas que manejan y viajes`, `<button class="btn primary" data-act="new-ent" data-tipo="conductores">${ico('plus')} Nuevo conductor</button>`) + abrirTodo() + entGrupos('conductores');
+views.clientes = () => entHead('Clientes', `${db.clientes.length} clientes · documentos, placas asignadas y viajes`, `<button class="btn primary" data-act="new-ent" data-tipo="clientes">${ico('plus')} Nuevo cliente</button>`) + abrirTodo() + entGrupos('clientes');
 
+// ---------- Documentos (agrupados por ficha) ----------
 views.documentos = () => {
-  let docs = todosDocs();
-  if (ui.docFilter === 'alerta') docs = docs.filter((d) => estadoDoc(d).rank <= 2);
-  else if (ui.docFilter !== 'todos') docs = docs.filter((d) => d.tipoEnt === ui.docFilter);
-  docs.sort((a, b) => estadoDoc(a).rank - estadoDoc(b).rank || (a.vence || '9').localeCompare(b.vence || '9'));
-  const label = { vehiculos: 'Vehículo', conductores: 'Conductor', clientes: 'Cliente' };
-  const f = [['alerta', `En alerta (${alertasDocs().length})`], ['todos', 'Todos'], ['vehiculos', 'Vehículos'], ['conductores', 'Conductores'], ['clientes', 'Clientes']];
+  const soloAlerta = ui.docFilter === 'alerta';
+  const alertas = alertasPorEntidad();
+  const secciones = ['vehiculos', 'conductores', 'clientes'].map((tipo) => {
+    const ents = soloAlerta ? alertas.filter((a) => a.tipo === tipo) : db[tipo].map((e) => ({ tipo, e, docs: e.docs.filter((d) => estadoDoc(d).rank <= 2) }));
+    if (!ents.length) return '';
+    return `<div class="sec-t">${ico(TIPO_ICO[tipo])} ${{ vehiculos: 'Vehículos', conductores: 'Conductores', clientes: 'Clientes' }[tipo]} <span class="count">${ents.length}</span></div>
+      <div class="grps">${ents.map(({ e, docs }) => {
+        const head = `<div class="gt"><div style="min-width:0">${entTitulo(tipo, e)}<small>${docs.length ? docs.map((d) => esc(d.tipo)).join(' · ') : 'Todo al día'}</small></div></div><div class="gm">${docsPill(e)}</div>`;
+        const lista = soloAlerta ? docs : e.docs;
+        const body = lista.map((d) => docRow(d, `<label class="btn ghost sm" title="Subir / reemplazar">${ico('upload')}<input type="file" accept="application/pdf,image/*" hidden data-entupload="${tipo}|${e.id}|${e.docs.indexOf(d)}"></label>`)).join('')
+          + `<div class="grp-f"><button class="btn ghost sm" data-act="ent" data-tipo="${tipo}" data-id="${e.id}">Ver ficha</button></div>`;
+        return grupo(`doc-${tipo}-${e.id}`, head, body);
+      }).join('')}</div>`;
+  }).join('');
   return `
-  ${entHead('Documentos', 'Vencimientos de vehículos, conductores y clientes', '')}
-  <div class="toolbar"><div class="toggle glass" style="overflow-x:auto;max-width:100%">${f.map(([id, n]) => `<button class="${ui.docFilter === id ? 'on' : ''}" data-act="docfilter" data-id="${id}">${n}</button>`).join('')}</div></div>
-  <div class="table-wrap glass"><table>
-    <thead><tr><th>Documento</th><th>De</th><th>Tipo</th><th>Vence</th><th>Estado</th><th>Archivo</th></tr></thead>
-    <tbody>${docs.map((d) => { const st = estadoDoc(d); return `<tr data-act="ent" data-tipo="${d.tipoEnt}" data-id="${d.ent.id}">
-      <td><b>${esc(d.tipo)}</b></td><td>${d.tipoEnt === 'vehiculos' ? `<span class="plate">${esc(d.nombre)}</span>` : esc(d.nombre)}</td><td>${label[d.tipoEnt]}</td>
-      <td>${d.vence ? fdate(d.vence) : '—'}</td><td><span class="tag ${st.cls}">${st.txt}</span></td><td style="color:var(--muted)">${esc(d.archivo) || '—'}</td></tr>`; }).join('') || '<tr><td colspan="6"><div class="empty">Sin documentos en alerta 🎉</div></td></tr>'}</tbody>
-  </table></div>`;
+  ${entHead('Documentos', 'Agrupados por vehículo, conductor y cliente', '')}
+  <div class="toolbar"><div class="toggle glass">${[['alerta', `Con alertas (${alertas.length})`], ['todos', 'Todos']].map(([id, n]) => `<button class="${ui.docFilter === id ? 'on' : ''}" data-act="docfilter" data-id="${id}">${n}</button>`).join('')}</div>
+  <span class="spacer"></span><button class="link" data-act="grp-all">${ui.open.size ? 'Cerrar todo' : 'Abrir todo'}</button></div>
+  ${secciones || '<div class="empty">Sin documentos en alerta 🎉</div>'}`;
 };
+
 
 // ---------- Render ----------
 function render() {
@@ -618,13 +753,24 @@ document.addEventListener('click', (e) => {
   if (!el) return;
   const { act, id } = el.dataset;
   switch (act) {
-    case 'nav': ui.view = el.dataset.view; closeAll(); render(); scrollTo(0, 0); break;
+    case 'nav': ui.view = el.dataset.view; ui.open.clear(); closeAll(); render(); scrollTo(0, 0); break;
     case 'empresa': ui.empresa = id; ui.conductor = null; render(); break;
-    case 'mode': ui.mode = el.dataset.mode; render(); break;
-    case 'mode-list': ui.view = 'operaciones'; ui.mode = 'list'; render(); break;
+    case 'mode': ui.mode = el.dataset.mode; if (ui.mode === 'group') ui.conductor = null; render(); break;
+    case 'mode-list': ui.view = 'operaciones'; ui.mode = 'group'; render(); break;
+    case 'grp': {
+      const k = el.dataset.key;
+      ui.open.has(k) ? ui.open.delete(k) : ui.open.add(k);
+      el.closest('.grp').classList.toggle('open');
+      break;
+    }
+    case 'grp-all':
+      if (ui.open.size) ui.open.clear(); else $$('.grp-h').forEach((h) => ui.open.add(h.dataset.key));
+      render(); break;
+    case 'groupby': ui.groupBy = id; ui.open.clear(); render(); break;
+    case 'gastosby': ui.gastosBy = id; ui.open.clear(); render(); break;
     case 'chip': ui.conductor = ui.conductor === id ? null : id; render(); break;
     case 'docfilter': ui.docFilter = id; render(); break;
-    case 'op': e.stopPropagation(); opDrawer(id); break;
+    case 'op': opDrawer(id); break;
     case 'ent': if (id) entDrawer(el.dataset.tipo, id); break;
     case 'stage': moverEtapa(id, el.dataset.etapa); opDrawer(id); break;
     case 'new-op': opForm(null, el.dataset.etapa); break;
