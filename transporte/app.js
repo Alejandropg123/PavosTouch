@@ -28,6 +28,8 @@ const ICONS = {
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
   more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  cols: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/>',
+  filter: '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>',
   chev: '<path d="m9 6 6 6-6 6"/>',
   building: '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M10 21v-3h4v3"/>',
 };
@@ -53,7 +55,7 @@ const colorFor = (id) => PALETTE[[...id].reduce((a, c) => a + c.charCodeAt(0), 0
 
 // ---------- Estado ----------
 let db = load();
-const ui = { view: 'resumen', empresa: 'todas', mode: 'group', groupBy: 'vehiculo', gastosBy: 'conductor', q: '', conductor: null, docFilter: 'alerta', open: new Set() };
+const ui = { view: 'resumen', empresa: 'todas', mode: 'group', groupBy: 'vehiculo', gastosBy: 'conductor', q: '', f: { vehiculo: '', conductor: '', cliente: '', etapa: '' }, docFilter: 'alerta', open: new Set() };
 
 // El navegador puede bloquear el almacenamiento (modo privado, visores embebidos): la app sigue funcionando en memoria.
 function storeGet() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
@@ -83,7 +85,10 @@ function opsFiltradas({ ignoreSearch = false } = {}) {
   const q = ui.q.trim().toLowerCase();
   return db.operaciones.filter((o) => {
     if (ui.empresa !== 'todas' && o.empresa !== ui.empresa) return false;
-    if (ui.conductor && o.conductorId !== ui.conductor) return false;
+    if (ui.f.vehiculo && o.vehiculoId !== ui.f.vehiculo) return false;
+    if (ui.f.conductor && o.conductorId !== ui.f.conductor) return false;
+    if (ui.f.cliente && o.clienteId !== ui.f.cliente) return false;
+    if (ui.f.etapa && o.etapa !== ui.f.etapa) return false;
     if (!ignoreSearch && q) {
       const hay = [o.os, o.origen, o.destino, o.carga, o.remesa, o.manifiesto, o.facturaNo,
         cliente(o.clienteId).nombre, vehiculo(o.vehiculoId).placa, conductor(o.conductorId).nombre].join(' ').toLowerCase();
@@ -230,7 +235,6 @@ views.operaciones = () => {
   const abiertas = ops.filter((o) => o.etapa !== 'facturado');
   const porFact = ops.filter((o) => o.etapa === 'finalizado');
   const mes = todayISO().slice(0, 7);
-  const conductoresActivos = db.conductores.filter((p) => opsEmpresa().some((o) => o.conductorId === p.id));
 
   const board = `<div class="board">${ETAPAS.map((e) => {
     const list = ops.filter((o) => o.etapa === e.id);
@@ -257,12 +261,13 @@ views.operaciones = () => {
   </div>
   <div class="toolbar">
     <label class="search glass">${ico('search')}<input id="q" placeholder="Buscar OS, placa, cliente, manifiesto…" value="${esc(ui.q)}"></label>
-    <div class="chips" ${ui.mode === 'group' ? 'hidden' : ''}>${conductoresActivos.map((p) => `<button class="chip glass ${ui.conductor === p.id ? 'on' : ''}" data-act="chip" data-id="${p.id}"><span class="ini" style="background:${colorFor(p.id)}">${initials(p.nombre)}</span>${esc(p.nombre.split(' ')[0])}</button>`).join('')}</div>
     <span class="spacer"></span>
     <div class="toggle glass">${[['group', 'Agrupado'], ['board', 'Tablero'], ['list', 'Lista']].map(([m, n]) => `<button class="${ui.mode === m ? 'on' : ''}" data-act="mode" data-mode="${m}">${n}</button>`).join('')}</div>
+    ${ui.mode === 'list' ? `<button class="btn ghost cols-btn" data-act="cols" title="Columnas">${ico('cols')}<span class="lbl"> Columnas</span> <span class="count">${colsVisibles().length}</span></button>` : ''}
     <button class="icon-btn glass hide-m" data-act="export" title="Exportar a Excel (CSV)">${ico('download')}</button>
     <button class="btn primary hide-m" data-act="new-op">${ico('plus')} Nueva operación</button>
   </div>
+  ${filtrosRapidos()}
   ${groupBar}
   ${ui.mode === 'board' ? board : ui.mode === 'list' ? list : opsAgrupadas(ops)}`;
 };
@@ -345,16 +350,87 @@ function opsAgrupadas(ops) {
   }).join('')}</div>`;
 }
 
+// ---------- Lista: columnas configurables ----------
+const COLUMNAS = [
+  ['fecha', 'Fecha', (o) => fdateS(o.fecha)],
+  ['os', 'OS', (o) => `<b>${esc(o.os)}</b>`],
+  ['empresa', 'Empresa', (o) => empTag(o.empresa)],
+  ['estado', 'Estado', (o) => etapaTag(o.etapa === 'facturado' ? 'finalizado' : o.etapa)],
+  ['facturacion', 'Facturación', (o) => o.etapa === 'facturado' ? '<span class="tag ok">Facturada</span>' : '<span class="tag warn">Pendiente</span>'],
+  ['placa', 'Placa', (o) => `<span class="plate">${esc(vehiculo(o.vehiculoId).placa)}</span>`],
+  ['trailer', 'Tráiler', (o) => esc(o.trailer) || '—'],
+  ['ruta', 'Ruta', (o) => `${esc(o.origen)} → ${esc(o.destino)}`],
+  ['carga', 'Carga', (o) => esc(o.carga)],
+  ['cliente', 'Cliente', (o) => esc(cliente(o.clienteId).nombre)],
+  ['conductor', 'Conductor', (o) => esc(conductor(o.conductorId).nombre)],
+  ['remesa', 'Remesa', (o) => esc(o.remesa) || '—'],
+  ['manifiesto', 'Manifiesto', (o) => esc(o.manifiesto) || '—'],
+  ['flete', 'Flete', (o) => money(o.flete), 'num'],
+  ['anticipo', 'Anticipo', (o) => money(o.anticipo), 'num'],
+  ['docs', 'Docs', (o) => `${docCount(o)}/${DOCS_OPERACION.length}`],
+  ['factura', 'Factura', (o) => esc(o.facturaNo) || '—'],
+  ['obs', 'Observaciones', (o) => esc(o.obs) || '—'],
+];
+const PRESETS = [
+  ['basica', 'Básica', ['fecha', 'os', 'placa', 'ruta', 'estado', 'flete']],
+  ['operacion', 'Operación', ['fecha', 'os', 'estado', 'placa', 'trailer', 'ruta', 'carga', 'cliente', 'conductor', 'remesa', 'manifiesto']],
+  ['facturacion', 'Facturación', ['fecha', 'os', 'cliente', 'facturacion', 'flete', 'anticipo', 'factura', 'docs']],
+  ['completa', 'Completa', COLUMNAS.map(([k]) => k)],
+];
+const COLS_KEY = () => 'controlops_cols_' + (innerWidth <= 900 ? 'movil' : 'pc');
+function colsVisibles() {
+  try { const v = JSON.parse(localStorage.getItem(COLS_KEY())); if (Array.isArray(v) && v.length) return v; } catch (e) { /* sin almacenamiento */ }
+  if (ui.cols && ui.cols[COLS_KEY()]) return ui.cols[COLS_KEY()];
+  return innerWidth <= 900 ? PRESETS[0][2] : PRESETS[1][2].concat(['flete', 'facturacion']);
+}
+function setCols(list) {
+  const orden = COLUMNAS.map(([k]) => k).filter((k) => list.includes(k));
+  ui.cols = { ...(ui.cols || {}), [COLS_KEY()]: orden };
+  try { localStorage.setItem(COLS_KEY(), JSON.stringify(orden)); } catch (e) { /* sin almacenamiento */ }
+}
+
 function tablaCompleta(ops) {
-  return `<div class="table-wrap glass"><table>
-    <thead><tr><th>Fecha</th><th>OS</th><th>Empresa</th><th>Estado</th><th>Facturación</th><th>Placa</th><th>Ruta</th><th>Carga</th><th>Cliente</th><th>Conductor</th><th>Remesa</th><th>Manifiesto</th><th class="num">Flete</th><th class="num">Anticipo</th><th>Docs</th><th>Factura</th></tr></thead>
-    <tbody>${ops.map((o) => `<tr data-act="op" data-id="${o.id}">
-      <td>${fdate(o.fecha)}</td><td><b>${esc(o.os)}</b></td><td>${empTag(o.empresa)}</td><td>${etapaTag(o.etapa === 'facturado' ? 'finalizado' : o.etapa)}</td>
-      <td>${o.etapa === 'facturado' ? '<span class="tag ok">Facturada</span>' : '<span class="tag warn">Pendiente facturar</span>'}</td>
-      <td><span class="plate">${esc(vehiculo(o.vehiculoId).placa)}</span></td><td>${esc(o.origen)} → ${esc(o.destino)}</td><td>${esc(o.carga)}</td>
-      <td>${esc(cliente(o.clienteId).nombre)}</td><td>${esc(conductor(o.conductorId).nombre)}</td><td>${esc(o.remesa)}</td><td>${esc(o.manifiesto)}</td>
-      <td class="num">${money(o.flete)}</td><td class="num">${money(o.anticipo)}</td><td>${docCount(o)}/${DOCS_OPERACION.length}</td><td>${esc(o.facturaNo) || '—'}</td>
-    </tr>`).join('') || '<tr><td colspan="16"><div class="empty">Sin resultados</div></td></tr>'}</tbody></table></div>`;
+  const vis = colsVisibles();
+  const cols = COLUMNAS.filter(([k]) => vis.includes(k));
+  const total = ops.reduce((t, o) => t + o.flete, 0);
+  return `<div class="list-info"><span>${ops.length} ${ops.length === 1 ? 'operación' : 'operaciones'} · ${money(total)} en fletes</span></div>
+  <div class="table-wrap glass"><table class="tbl">
+    <thead><tr>${cols.map(([, n, , c]) => `<th class="${c || ''}">${n}</th>`).join('')}</tr></thead>
+    <tbody>${ops.map((o) => `<tr data-act="op" data-id="${o.id}">${cols.map(([, , fn, c]) => `<td class="${c || ''}">${fn(o)}</td>`).join('')}</tr>`).join('')
+      || `<tr><td colspan="${cols.length}"><div class="empty">Sin resultados con estos filtros</div></td></tr>`}</tbody></table></div>`;
+}
+
+function colsSheet() {
+  const vis = colsVisibles();
+  const preset = PRESETS.find(([, , l]) => l.length === vis.length && l.every((k) => vis.includes(k)));
+  openModal(`
+  <div class="d-head"><div><h2>Columnas de la lista</h2><div class="s">Elige qué tan extensa quieres ver la tabla</div></div>
+    <button class="icon-btn glass x" data-act="close-modal">${ico('x')}</button></div>
+  <div class="d-body">
+    <div class="sec"><h5>Vistas rápidas</h5><div class="presets">${PRESETS.map(([id, n, l]) => `
+      <button class="preset ${preset && preset[0] === id ? 'on' : ''}" data-act="preset" data-id="${id}"><b>${n}</b><small>${l.length} columnas</small></button>`).join('')}</div></div>
+    <div class="sec"><h5>O escoge una por una</h5><div class="colgrid">${COLUMNAS.map(([k, n]) => `
+      <label class="colck ${vis.includes(k) ? 'on' : ''}"><input type="checkbox" data-col="${k}" ${vis.includes(k) ? 'checked' : ''}><span class="box">${ico('check')}</span>${n}</label>`).join('')}</div></div>
+  </div>
+  <div class="d-foot"><button class="btn primary" data-act="close-modal">${ico('check')} Listo</button></div>`);
+}
+
+// ---------- Filtros rápidos ----------
+function filtrosRapidos() {
+  const base = opsEmpresa();
+  const usados = (key) => new Set(base.map((o) => o[key]));
+  const sel = (k, icon, placeholder, options) => `
+    <label class="fsel glass ${ui.f[k] ? 'on' : ''}">${ico(icon)}<span class="fv">${esc((options.find(([v]) => v === ui.f[k]) || [, placeholder])[1])}</span>
+      <select data-filter="${k}" aria-label="${placeholder}"><option value="">${placeholder}: todos</option>${options.map(([v, n]) => `<option value="${v}" ${ui.f[k] === v ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+      ${ico('chev', 'dd')}</label>`;
+  const activos = Object.values(ui.f).filter(Boolean).length;
+  return `<div class="filters">
+    ${activos ? `<button class="fclear" data-act="clear-f">${ico('x')} Limpiar (${activos})</button>` : ''}
+    ${sel('vehiculo', 'truck', 'Placa', db.vehiculos.filter((v) => usados('vehiculoId').has(v.id)).map((v) => [v.id, v.placa]))}
+    ${sel('conductor', 'user', 'Conductor', db.conductores.filter((p) => usados('conductorId').has(p.id)).map((p) => [p.id, p.nombre]))}
+    ${sel('cliente', 'building', 'Cliente', db.clientes.filter((c) => usados('clienteId').has(c.id)).map((c) => [c.id, c.nombre]))}
+    ${sel('etapa', 'filter', 'Estado', ETAPAS.map((e) => [e.id, e.nombre]))}
+  </div>`;
 }
 
 function alertaRow({ tipo, e, docs }) {
@@ -754,8 +830,8 @@ document.addEventListener('click', (e) => {
   const { act, id } = el.dataset;
   switch (act) {
     case 'nav': ui.view = el.dataset.view; ui.open.clear(); closeAll(); render(); scrollTo(0, 0); break;
-    case 'empresa': ui.empresa = id; ui.conductor = null; render(); break;
-    case 'mode': ui.mode = el.dataset.mode; if (ui.mode === 'group') ui.conductor = null; render(); break;
+    case 'empresa': ui.empresa = id; ui.f = { vehiculo: '', conductor: '', cliente: '', etapa: '' }; render(); break;
+    case 'mode': ui.mode = el.dataset.mode; render(); break;
     case 'mode-list': ui.view = 'operaciones'; ui.mode = 'group'; render(); break;
     case 'grp': {
       const k = el.dataset.key;
@@ -768,7 +844,9 @@ document.addEventListener('click', (e) => {
       render(); break;
     case 'groupby': ui.groupBy = id; ui.open.clear(); render(); break;
     case 'gastosby': ui.gastosBy = id; ui.open.clear(); render(); break;
-    case 'chip': ui.conductor = ui.conductor === id ? null : id; render(); break;
+    case 'clear-f': ui.f = { vehiculo: '', conductor: '', cliente: '', etapa: '' }; render(); break;
+    case 'cols': colsSheet(); break;
+    case 'preset': setCols(PRESETS.find((x) => x[0] === id)[2]); render(); colsSheet(); break;
     case 'docfilter': ui.docFilter = id; render(); break;
     case 'op': opDrawer(id); break;
     case 'ent': if (id) entDrawer(el.dataset.tipo, id); break;
@@ -804,6 +882,15 @@ document.addEventListener('click', (e) => {
 // Subir archivos (en el prototipo solo se guarda el nombre; en la versión final se sube a la nube)
 document.addEventListener('change', (e) => {
   const inp = e.target;
+  if (inp.dataset.filter) { ui.f[inp.dataset.filter] = inp.value; ui.open.clear(); render(); return; }
+  if (inp.dataset.col) {
+    const vis = new Set(colsVisibles());
+    inp.checked ? vis.add(inp.dataset.col) : vis.delete(inp.dataset.col);
+    if (!vis.size) { inp.checked = true; return; }
+    setCols([...vis]); render(); inp.closest('.colck').classList.toggle('on', inp.checked);
+    $$('.preset').forEach((b) => b.classList.remove('on'));
+    return;
+  }
   const file = inp.files && inp.files[0];
   if (!file) return;
   if (inp.dataset.upload) {
