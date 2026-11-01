@@ -1,5 +1,7 @@
 # EventosApp — Excalibur Producciones
 
+> Nombre visible de la app: **Excalibur**. Logo, colores y datos de ejemplo en `eventosapp-assets/`.
+
 App web interna para gestionar el ciclo completo de un evento: cotizar, confirmar, agendar, alistar equipos, operar, cobrar y controlar gastos.
 
 > **Estado:** definición de requisitos (entrevista). Todavía no hay código.
@@ -17,7 +19,7 @@ Solo personal interno, con inicio de sesión obligatorio. No hay web pública ni
 
 | Rol | Ve y hace (borrador, a afinar) |
 |---|---|
-| **Gerencia** | Todo, incluidos finanzas y usuarios. |
+| **Gerencia** | Todo, incluidos finanzas y usuarios. **Es la única que puede pulsar "Confirmar y operar".** |
 | **Contabilidad** | Cotizaciones y precios, facturas, cobros, gastos y datos bancarios. |
 | **Operativo** | OS, agenda y hojas de ruta. No ve finanzas. |
 | **Bodega** | Inventario y checklists de despacho e ingreso. No ve precios ni finanzas. |
@@ -66,6 +68,7 @@ Solo personal interno, con inicio de sesión obligatorio. No hay web pública ni
 - **La OS es una llave:** nace al confirmar una cotización o al crearse directa. Todo cuelga de ella.
 - **El precio no es fijo.** Depende del cliente y del lugar. El del catálogo es solo referencia. Lo editado en una cotización no afecta al catálogo ni a otras cotizaciones.
 - **IVA por defecto,** que se puede desactivar en excepciones negociadas.
+- **Solo Gerencia confirma y opera:** el botón "Confirmar y operar" (y crear una OS directa) es exclusivo de Gerencia.
 - **Los pagos no bloquean:** anticipo, pago total y crédito son solo información. Gerencia conoce y avala cada evento por fuera de la app.
 - **Las alertas avisan, nunca bloquean.**
 - **Disponibilidad por fechas,** no por conteo rígido de bodega. Un equipo puede pasar directo de un evento a otro.
@@ -99,12 +102,10 @@ Solo personal interno, con inicio de sesión obligatorio. No hay web pública ni
 - **Excel del inventario** (3.000 a 4.000 elementos): sin acceso por ahora. Se carga después.
 - **Libro columnario real:** no hay ejemplo. Se usa un catálogo inicial de unos 35 rubros, a ajustar.
 - **Colores exactos de la marca:** se aproximan desde la foto (negro, rojo, plateado/gris y amarillo para alertas).
-- **Quién puede pulsar "Confirmar y operar":** pendiente (¿Gerencia, Operativo o ambos?).
-- **Formato de los números** (prefijos y numeración) de OS y cotización.
+- **Numeración:** las OS empiezan en **610**. Falta confirmar el formato de las cotizaciones (propuesto: COT-0001).
 - **Descuentos:** sin reglas definidas.
 - **Trajes y vajilla:** casos especiales (por talla, por prenda) sin abordar.
 - **Datos personales:** hace falta autorización de tratamiento (Ley 1581 de 2012) y revisar cómo se protege la información bancaria.
-- **Nombre visible de la app:** "EventosApp" es el repositorio. Falta confirmar si se muestra como "Excalibur".
 
 ### Catálogo inicial de rubros de gasto (borrador)
 | Categoría | Rubros |
