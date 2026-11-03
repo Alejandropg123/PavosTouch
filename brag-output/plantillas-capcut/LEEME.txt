@@ -1,0 +1,21 @@
+PLANTILLAS PARA ARMAR EL VIDEO DE EXCALIBUR EN CAPCUT (versión gratis)
+
+Todas las imágenes miden 1080 x 1920 (vertical). En CapCut, cada una se estira a pantalla completa.
+
+Orden de las capas, de abajo hacia arriba:
+  1-fondo.png            -> capa de abajo, dura todo el video
+  (su grabación de pantalla) -> encima del fondo; achíquela hasta que quepa en el hueco del teléfono
+  2-marco-telefono.png   -> encima de la grabación; tapa los bordes
+  titulos/titulo-XX.png  -> arriba de todo; uno por escena
+  4-toque.png            -> círculo para marcar dónde se toca (achíquelo y póngalo encima del botón)
+
+Para el inicio y el final:
+  5-portada-logo.png  -> primera escena (logo + frase)
+  6-cierre.png        -> última escena (logo + «Ábrela en Chrome» + dirección)
+
+Títulos incluidos (uno por escena, en el mismo orden del video):
+  01 Inicio · 02 Cotizaciones · 03 Cotiza en 3 pasos · 04 Agrega del catálogo · 05 PDF
+  06 Confirmar y operar · 07 Calendario de OS · 08 Detalle de la OS · 09 Bases de datos
+  10 Catálogo · 11 Bodega · 12 Excel
+
+Animación sugerida para cada título: «Aparecer» o «Deslizar hacia arriba», unos 0,3 segundos.
