@@ -4,6 +4,6 @@
 // Si se dejan vacías, la app abre en modo demostración con datos de ejemplo
 // guardados solo en este navegador.
 window.APG_VIDA_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://jvcydooqmiqxvghhqjke.supabase.co',
+  supabaseAnonKey: 'sb_publishable_tSPiOzCTkycXadm7_x7Vbw_JZ3x2NOh',
 };

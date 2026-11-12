@@ -1,0 +1,14 @@
+{
+  "name": "APG VIDA",
+  "short_name": "APG VIDA",
+  "description": "Tu vida organizada: tareas, hábitos, pagos y documentos.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#111214",
+  "theme_color": "#111214",
+  "lang": "es-CO",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
