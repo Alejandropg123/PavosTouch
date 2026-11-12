@@ -210,6 +210,14 @@ input[type=color]{width:34px;height:30px;padding:0;border:0;background:none;}
 .list-edit .emo-inp{width:46px;text-align:center;}
 .list-edit input[type=text]{flex:1;}
 
+/* ---------- Diálogo ---------- */
+.dlg-wrap{position:fixed;inset:0;background:rgba(0,0,0,.4);display:grid;place-items:center;z-index:60;padding:16px;}
+.dlg{background:var(--surface);border-radius:14px;padding:18px;width:100%;max-width:360px;box-shadow:var(--shadow);}
+.dlg p{margin:0 0 12px;}
+.dlg .inp{margin-bottom:12px;}
+.dlg-btns{display:flex;justify-content:flex-end;gap:8px;}
+.btn.danger-fill{background:var(--red);color:#fff;}
+
 /* ---------- Aviso ---------- */
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;display:flex;gap:14px;align-items:center;box-shadow:var(--shadow);z-index:50;font-size:14px;}
 .toast button{color:var(--accent);font-weight:700;filter:brightness(1.4);}

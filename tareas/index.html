@@ -22,7 +22,7 @@
 <div class="toast" id="toast" hidden></div>
 <script src="app.js"></script>
 <script>
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  try { if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) { /* vista previa aislada */ }
 </script>
 </body>
 </html>

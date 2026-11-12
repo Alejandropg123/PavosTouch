@@ -10,7 +10,7 @@ y guarda todo en el propio dispositivo. No necesita servidor ni cuentas.
   - Fechas: `hoy`, `mañana`, `pasado mañana`, `viernes`, `en 3 días`, `próxima semana`, `15/12`, `el 5 de enero`
   - Hora: `3pm`, `15:30`, `a las 4`
   - Prioridad: `!alta`, `!media`, `!baja` (o `!3`, `!2`, `!1`)
-  - Lista: `^nombre` · Repetir: `cada día`, `cada semana`, `cada mes`, `cada año`, `días hábiles`
+  - Lista: `^nombre` · Repetir: `cada día`, `cada semana` o `semanalmente`, `cada mes`, `cada año`, `días hábiles`
 - **Detalle de tarea**: fecha y hora, repetición, prioridad, lista, etiquetas, subtareas y notas.
 - **Calendario** mensual con las tareas de cada día.
 - **Matriz de Eisenhower** (por prioridad), con arrastrar y soltar.

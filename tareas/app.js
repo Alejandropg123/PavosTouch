@@ -126,7 +126,8 @@ let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { toast('No se pudo guardar (almacenamiento lleno)'); }
+    try { localStorage.setItem(KEY, JSON.stringify(db)); }
+    catch (e) { if (!save.warned) { save.warned = true; toast('Este navegador no deja guardar: los cambios se perderán al cerrar'); } }
   }, 150);
 }
 
@@ -158,10 +159,10 @@ function parseQuick(text, base = {}) {
     const l = db.lists.find((x) => x.name.toLowerCase().replace(/\s+/g, '') .startsWith(ln.toLowerCase()));
     if (l) out.listId = l.id;
   });
-  take(/\s(cada d[ií]a|diari[oa]|todos los d[ií]as)(?=\s)/i, () => { out.repeat = 'daily'; });
-  take(/\s(cada semana|semanal(?:mente)?)(?=\s)/i, () => { out.repeat = 'weekly'; });
-  take(/\s(cada mes|mensual(?:mente)?)(?=\s)/i, () => { out.repeat = 'monthly'; });
-  take(/\s(cada año|anual(?:mente)?)(?=\s)/i, () => { out.repeat = 'yearly'; });
+  take(/\s(cada d[ií]a|diariamente|todos los d[ií]as)(?=\s)/i, () => { out.repeat = 'daily'; });
+  take(/\s(cada semana|semanalmente)(?=\s)/i, () => { out.repeat = 'weekly'; });
+  take(/\s(cada mes|mensualmente)(?=\s)/i, () => { out.repeat = 'monthly'; });
+  take(/\s(cada año|anualmente)(?=\s)/i, () => { out.repeat = 'yearly'; });
   take(/\s(d[ií]as h[aá]biles|entre semana)(?=\s)/i, () => { out.repeat = 'weekdays'; });
   // Hora: 3pm, 3:30pm, 15:30, a las 3, a las 9am
   take(/\s(?:a las\s)?(\d{1,2})(?::(\d{2}))?\s?(am|pm|a\.m\.|p\.m\.)(?=\s)/i, (_, h, m, ap) => {
@@ -695,6 +696,28 @@ function go(v) {
   render();
 }
 
+// ---------- Diálogos propios (reemplazan prompt/confirm del navegador) ----------
+function ask(msg, { input = false, value = '', ok = 'Aceptar', danger = false } = {}) {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'dlg-wrap';
+    wrap.innerHTML = `<form class="dlg" role="dialog" aria-modal="true">
+      <p>${esc(msg)}</p>
+      ${input ? `<input class="inp" name="v" value="${esc(value)}" autocomplete="off">` : ''}
+      <div class="dlg-btns"><button type="button" class="btn" data-x>Cancelar</button>
+      <button class="btn ${danger ? 'danger-fill' : 'primary'}">${esc(ok)}</button></div></form>`;
+    const close = (v) => { wrap.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(input ? null : false); } };
+    document.addEventListener('keydown', onKey, true);
+    wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-x]')) close(input ? null : false); });
+    const form = wrap.querySelector('form');
+    form._submit = () => close(input ? wrap.querySelector('input').value : true);
+    form.addEventListener('submit', (e) => { e.preventDefault(); e.stopPropagation(); form._submit(); });
+    document.body.appendChild(wrap);
+    (wrap.querySelector('input') || wrap.querySelector('.btn.primary, .danger-fill')).focus();
+  });
+}
+
 // ---------- Avisos ----------
 let toastTimer;
 function toast(msg, undo) {
@@ -752,18 +775,22 @@ document.addEventListener('click', (e) => {
     case 'sub-toggle': if (sel) { const s = sel.subtasks.find((z) => z.id === el.dataset.s); s.done = !s.done; save(); render(); } break;
     case 'sub-del': if (sel) { sel.subtasks = sel.subtasks.filter((z) => z.id !== el.dataset.s); save(); render(); } break;
     case 'new-list': {
-      const name = prompt('Nombre de la nueva lista'); if (!name?.trim()) break;
-      const l = { id: uid(), name: name.trim(), emoji: '📁', color: LIST_COLORS[db.lists.length % LIST_COLORS.length] };
-      db.lists.push(l); save(); go({ type: 'list', id: l.id }); break;
+      ask('Nombre de la nueva lista', { input: true, ok: 'Crear' }).then((name) => {
+        if (!name?.trim()) return;
+        const l = { id: uid(), name: name.trim(), emoji: '📁', color: LIST_COLORS[db.lists.length % LIST_COLORS.length] };
+        db.lists.push(l); save(); go({ type: 'list', id: l.id });
+      }); break;
     }
     case 'edit-lists': go({ type: 'tool', id: 'settings' }); setTimeout(() => $('#listsCard')?.scrollIntoView({ behavior: 'smooth' }), 50); break;
     case 'del-list': {
       const l = listById(id); const n = db.tasks.filter((x) => x.listId === id).length;
-      if (!confirm(`¿Eliminar la lista “${l.name}”?${n ? ` Sus ${n} tareas pasarán a la Bandeja de entrada.` : ''}`)) break;
-      db.lists = db.lists.filter((x) => x.id !== id);
-      db.tasks.forEach((x) => { if (x.listId === id) x.listId = null; });
-      if (db.settings.defaultList === id) db.settings.defaultList = null;
-      save(); render(); break;
+      ask(`¿Eliminar la lista “${l.name}”?${n ? ` Sus ${n} tareas pasarán a la Bandeja de entrada.` : ''}`, { ok: 'Eliminar', danger: true }).then((yes) => {
+        if (!yes) return;
+        db.lists = db.lists.filter((x) => x.id !== id);
+        db.tasks.forEach((x) => { if (x.listId === id) x.listId = null; });
+        if (db.settings.defaultList === id) db.settings.defaultList = null;
+        save(); render();
+      }); break;
     }
     case 'cal-day': ui.calDay = el.dataset.d; if (ui.calDay.slice(0, 7) !== ui.calMonth) ui.calMonth = ui.calDay.slice(0, 7); render(); break;
     case 'cal-move': ui.calMonth = addMonths(ui.calMonth + '-01', +el.dataset.n).slice(0, 7); render(); break;
@@ -772,7 +799,7 @@ document.addEventListener('click', (e) => {
       const h = db.habits.find((z) => z.id === id); const d = el.dataset.d;
       if (h.log[d]) delete h.log[d]; else h.log[d] = true; save(); render(); break;
     }
-    case 'del-habit': if (confirm('¿Eliminar este hábito y su historial?')) { db.habits = db.habits.filter((z) => z.id !== id); save(); render(); } break;
+    case 'del-habit': ask('¿Eliminar este hábito y su historial?', { ok: 'Eliminar', danger: true }).then((yes) => { if (yes) { db.habits = db.habits.filter((z) => z.id !== id); save(); render(); } }); break;
     case 'pomo-mode': timer.setMode(el.dataset.v); render(); break;
     case 'pomo-toggle': if (timer.running) timer.pause(); else timer.start(); render(); break;
     case 'pomo-reset': timer.reset(); document.title = 'Mis Tareas'; render(); break;
@@ -785,16 +812,27 @@ document.addEventListener('click', (e) => {
       setTimeout(() => URL.revokeObjectURL(aEl.href), 1000); break;
     }
     case 'reset-all':
-      if (confirm('¿Borrar TODAS tus tareas, listas y hábitos? Esto no se puede deshacer.')) {
-        db = seed(); db.tasks = []; db.habits = []; save(); ui.sel = null; go({ type: 'smart', id: 'today' });
-      } break;
+      ask('¿Borrar TODAS tus tareas, listas y hábitos? Esto no se puede deshacer.', { ok: 'Borrar todo', danger: true }).then((yes) => {
+        if (yes) { db = seed(); db.tasks = []; db.habits = []; save(); ui.sel = null; go({ type: 'smart', id: 'today' }); }
+      }); break;
     case 'undo': { const t = $('#toast'); if (t._undo) t._undo(); t.hidden = true; break; }
   }
 });
 
-document.addEventListener('submit', (e) => {
-  const f = e.target.closest('[data-form]'); if (!f) return;
+// Los formularios se manejan por Enter y por clic (no dependen del envío nativo, que algunos marcos aislados bloquean).
+document.addEventListener('submit', (e) => { e.preventDefault(); const f = e.target.closest('[data-form]'); if (f) handleForm(f); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.isComposing || e.target.tagName !== 'INPUT') return;
+  const f = e.target.closest('form'); if (!f) return;
   e.preventDefault();
+  if (f.dataset.form) handleForm(f); else f._submit?.();
+});
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('form button:not([type=button])'); if (!btn || btn.dataset.act) return;
+  const f = btn.closest('form'); e.preventDefault();
+  if (f.dataset.form) handleForm(f); else f._submit?.();
+}, true);
+function handleForm(f) {
   const kind = f.dataset.form;
   if (kind === 'quick') {
     const inp = f.elements.q; const text = inp.value.trim(); if (!text) return;
@@ -813,7 +851,7 @@ document.addEventListener('submit', (e) => {
     db.habits.push({ id: uid(), name, emoji: f.elements.emoji.value.trim() || '⭐', color: f.elements.color.value, log: {} });
     save(); render();
   }
-});
+}
 
 // Cambios en el panel de detalle y en Personalizar
 document.addEventListener('input', (e) => {
@@ -877,9 +915,12 @@ document.addEventListener('change', (e) => {
     file.text().then((txt) => {
       const d = JSON.parse(txt);
       if (!Array.isArray(d.tasks) || !Array.isArray(d.lists)) throw new Error('formato');
-      if (!confirm('Esto reemplazará los datos actuales por los de la copia. ¿Continuar?')) return;
-      localStorage.setItem(KEY, JSON.stringify(d)); db = load(); ui.sel = null; render(); toast('Copia cargada');
-    }).catch(() => toast('Ese archivo no es una copia válida'));
+      return ask('Esto reemplazará los datos actuales por los de la copia. ¿Continuar?', { ok: 'Reemplazar', danger: true }).then((yes) => {
+        if (!yes) return;
+        try { localStorage.setItem(KEY, JSON.stringify(d)); db = load(); } catch (e) { db = d; }
+        ui.sel = null; save(); render(); toast('Copia cargada');
+      });
+    }).catch(() => toast('Ese archivo no es una copia válida')).finally(() => { el.value = ''; });
   }
 });
 
