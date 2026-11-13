@@ -205,7 +205,7 @@ function vistaInicio() {
   const frase = 'Hoy ' + partes.slice(0, -1).join(', ') + (partes.length > 1 ? ' y ' : '') + partes[partes.length - 1] + '.';
 
   const tareasHechasHoy = db.tareas.filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) === h).length;
-  const estilo = ui.estiloInicio || Cuenta.ajuste('estiloInicio') || 'a';
+  const estilo = ui.estiloInicio || Cuenta.ajuste('estiloInicio') || 'c';
   const datos = { tareas, habs, hechos, pagos, pagosVencidos, docs, docsVencidos, tareasHechasHoy };
   const cabecera = estilo === 'b' ? inicioB(datos) : estilo === 'c' ? inicioC(datos) : inicioA(datos);
   return `
@@ -1385,7 +1385,7 @@ function vistaAjustes() {
   </section>
   <section class="card">
     <div class="card-h"><span class="ic">${ic('inicio')}</span><h2>Estilo del Inicio</h2></div>
-    <div class="seg">${[['a', 'Tarjetas de colores'], ['b', 'Progreso del día'], ['c', 'Agenda']].map(([k, t]) => `<button type="button" class="${(Cuenta.ajuste('estiloInicio') || 'a') === k ? 'on' : ''}" data-act="estilo-inicio" data-v="${k}">${t}</button>`).join('')}</div>
+    <div class="seg">${[['a', 'Tarjetas de colores'], ['b', 'Progreso del día'], ['c', 'Agenda']].map(([k, t]) => `<button type="button" class="${(Cuenta.ajuste('estiloInicio') || 'c') === k ? 'on' : ''}" data-act="estilo-inicio" data-v="${k}">${t}</button>`).join('')}</div>
   </section>
   <section class="card">
     <div class="card-h"><span class="ic">${ic('lista')}</span><h2>Organización</h2></div>
