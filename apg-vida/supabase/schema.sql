@@ -37,6 +37,9 @@ create table if not exists public.habitos (
   nombre text not null check (length(trim(nombre)) > 0),
   icono text,
   es_ejercicio boolean not null default false,  -- permite anotar tiempo y repeticiones
+  momento text check (momento in ('manana', 'tarde', 'noche')),   -- vacío = todo el día
+  meta_dias int check (meta_dias is null or meta_dias between 1 and 1000),
+  color text check (color is null or color ~ '^#[0-9A-Fa-f]{6}$'),
   orden int not null default 0,
   created_at timestamptz not null default now()
 );

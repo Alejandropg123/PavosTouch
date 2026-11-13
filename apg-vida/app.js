@@ -86,7 +86,7 @@ const habitosOrden = () => db.habitos.slice().sort((a, b) => a.orden - b.orden |
 const registro = (habId, fecha) => db.habito_registros.find((r) => r.habito_id === habId && r.fecha === fecha);
 
 // ---------- Estado de la interfaz ----------
-const ui = { vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos' };
+const ui = { vistaHab: localStorage.getItem('apgvida-vista-hab') || 'hoy', diaHab: null, semanaHab: 0, mesHabRes: 0, verHabHechos: true, vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos' };
 const ocupado = new Set();   // evita dobles toques mientras se guarda
 
 // ---------- Toast ----------
@@ -166,7 +166,7 @@ function render() {
   const activo = document.activeElement && document.activeElement.id;
   view.innerHTML = fn(param);
   if (activo === 'busqueda') { const b = $('#busqueda'); b.focus(); b.setSelectionRange(b.value.length, b.value.length); }
-  const clave = vista + '/' + param + (vista === 'tareas' ? '/' + ui.vistaTareas : '');
+  const clave = vista + '/' + param + (vista === 'tareas' ? '/' + ui.vistaTareas : vista === 'habitos' ? '/' + ui.vistaHab : '');
   if (clave !== rutaAnterior) { window.scrollTo(0, 0); rutaAnterior = clave; }
 }
 
@@ -222,7 +222,7 @@ function vistaInicio() {
       <div class="card-h"><span class="ic">${ic('habitos')}</span><h2>Hábitos de hoy</h2><span class="progreso-txt">${hechos} de ${habs.length}</span></div>
       ${habs.length ? `<div class="habitos-hoy">${habs.map((x) => {
         const on = !!registro(x.id, h);
-        return `<button type="button" class="hab-mini ${on ? 'on' : ''}" data-act="toggle-habito" data-id="${x.id}" data-fecha="${h}" aria-pressed="${on}"><span class="bola">${ic(on ? 'check' : x.icono)}</span>${esc(x.nombre)}</button>`;
+        return `<button type="button" class="hab-mini ${on ? 'on' : ''}" style="--c:${colorHab(x)}" data-act="toggle-habito" data-id="${x.id}" data-fecha="${h}" aria-pressed="${on}"><span class="bola">${ic(on ? 'check' : x.icono)}</span>${esc(x.nombre)}</button>`;
       }).join('')}</div>` : `<div class="vacio">Aún no tienes hábitos. <button type="button" class="link" data-act="ir" data-v="habitos">Crear uno</button></div>`}
     </section>
     <section class="card">
@@ -485,31 +485,163 @@ function resumenEjercicio(det) {
   return partes.join(' · ');
 }
 
+// ----- Colores y momentos del día -----
+const COLORES_HABITO = ['#14C47F', '#1F9FB0', '#3F74D8', '#6A4BC4', '#7A5CE0', '#E05BA8', '#D9473B', '#E0A11B', '#7A8B99'];
+const COLOR_POR_ICONO = { agua: '#1F9FB0', libro: '#3F74D8', sueno: '#6A4BC4', ejercicio: '#E05BA8', meditar: '#7A5CE0', manzana: '#D9473B', sol: '#E0A11B', corazon: '#E05BA8', fuego: '#D9473B' };
+const colorHab = (x) => x.color || COLOR_POR_ICONO[x.icono] || '#14C47F';
+const MOMENTOS = [['', 'Todo el día', 'reloj'], ['manana', 'Mañana', 'sol'], ['tarde', 'Tarde', 'sol'], ['noche', 'Noche', 'sueno']];
+const anillo = (pct, tam = 44, grosor = 5, color = 'var(--verde)') => `<span class="anillo" style="--p:${Math.round(pct)};--t:${tam}px;--g:${grosor}px;--c:${color}"></span>`;
+
 function vistaHabitos() {
-  const h = hoyISO();
-  const habs = habitosOrden();
-  const hechos = habs.filter((x) => registro(x.id, h)).length;
+  const vistas = [['hoy', 'Hoy', 'habitos'], ['semana', 'Semana', 'calendario'], ['mes', 'Mes', 'matriz']];
+  const cuerpo = ui.vistaHab === 'semana' ? habitosSemana() : ui.vistaHab === 'mes' ? habitosMes() : habitosHoy();
   return `
-  <div class="cabeza"><div class="txt"><h1>Hábitos saludables</h1><p>${hechos} de ${habs.length} cumplidos hoy</p></div>
+  <div class="cabeza"><div class="txt"><h1>Hábitos</h1><p>Pequeñas acciones, todos los días</p></div>
     <button type="button" class="btn primario" data-act="nuevo-habito">${ic('mas')}Nuevo hábito</button></div>
-  ${habs.length ? habs.map((x) => {
-    const r = rachas(x.id);
-    const reg = registro(x.id, h);
-    const on = !!reg;
-    const semana = Array.from({ length: 7 }, (_, i) => sumarDias(h, i - 6)).map((f) =>
-      `<span class="d ${r.fechas.has(f) ? 'on' : ''} ${f === h ? 'hoy' : ''}"><i></i>${LETRAS[aFecha(f).getDay()]}</span>`).join('');
-    const det = x.es_ejercicio && on ? resumenEjercicio(reg.detalle) : '';
-    return `<section class="card hab-card">
-      <span class="ic">${ic(x.icono)}</span>
-      <div class="cuerpo" data-act="ir" data-v="habito" data-p="${x.id}">
-        <div class="nombre">${esc(x.nombre)}</div>
-        <span class="racha ${r.actual ? '' : 'cero'}">${ic('fuego')}${r.actual ? plural(r.actual, 'día seguido', 'días seguidos') : 'Sin racha'}</span>
-        <div class="semana">${semana}</div>
-        ${x.es_ejercicio && on ? `<div class="detalle-ej">${det ? esc(det) + ' · ' : ''}<button type="button" class="link" data-act="detalle-ejercicio" data-id="${x.id}" data-fecha="${h}">${det ? 'Editar' : '+ Anotar tiempo y repeticiones'}</button></div>` : ''}
+  <div class="vistas" role="tablist">${vistas.map(([k, t, i]) => `<button type="button" role="tab" aria-selected="${ui.vistaHab === k}" class="${ui.vistaHab === k ? 'on' : ''}" data-act="vista-hab" data-v="${k}">${ic(i)}<span>${t}</span></button>`).join('')}</div>
+  <div class="anim-entrada">${cuerpo}</div>`;
+}
+
+function habitosHoy() {
+  const h = hoyISO();
+  const dia = ui.diaHab && ui.diaHab <= h ? ui.diaHab : h;
+  const habs = habitosOrden();
+  if (!habs.length) return `<section class="card"><div class="vacio">${ic('habitos')}Crea tu primer hábito.</div></section>`;
+  const hechosDe = (f) => habs.filter((x) => registro(x.id, f)).length;
+
+  // Tira de los últimos 7 días con su progreso
+  const tira = Array.from({ length: 7 }, (_, i) => sumarDias(h, i - 6)).map((f) => {
+    const pct = (hechosDe(f) / habs.length) * 100;
+    const d = aFecha(f);
+    return `<button type="button" class="dia ${f === dia ? 'sel' : ''} ${f === h ? 'hoy' : ''}" data-act="dia-hab" data-v="${f}" aria-label="${fmtFecha(f, true)}">
+      <span class="dn">${d.toLocaleDateString('es-CO', { weekday: 'short' }).replace('.', '')}</span>
+      <span class="dnum">${anillo(pct, 38, 4, f === dia ? 'var(--verde-neon)' : 'var(--verde)')}<b>${d.getDate()}</b></span></button>`;
+  }).join('');
+
+  const hechos = hechosDe(dia);
+  const pct = (hechos / habs.length) * 100;
+  const faltan = habs.length - hechos;
+  const esHoy = dia === h;
+  const mensaje = hechos === habs.length ? (esHoy ? '¡Día perfecto! 🎉' : 'Ese día cumpliste todo 🎉')
+    : hechos === 0 ? (esHoy ? '¡Arranquemos! Marca tu primer hábito' : 'Ese día no marcaste hábitos')
+      : esHoy ? `Vas bien, ${faltan === 1 ? 'te falta 1' : `te faltan ${faltan}`}` : `Ese día cumpliste ${hechos} de ${habs.length}`;
+
+  const pendientes = habs.filter((x) => !registro(x.id, dia));
+  const completados = habs.filter((x) => registro(x.id, dia));
+  const grupos = MOMENTOS.map(([k, t, i]) => {
+    const ls = pendientes.filter((x) => (x.momento || '') === k);
+    return ls.length ? `<section class="card grupo-hab"><div class="grupo-hab-h">${ic(i)}<h2>${t}</h2><span>${ls.length}</span></div>
+      <div class="hab-lista">${ls.map((x) => filaHabito(x, dia)).join('')}</div></section>` : '';
+  }).join('');
+
+  return `
+  <div class="tira-dias">${tira}</div>
+  <section class="card progreso-dia">
+    ${anillo(pct, 72, 8, 'var(--verde)')}<div class="pd-txt"><div class="pd-num">${hechos}<small>/${habs.length}</small></div><div class="pd-msg">${esc(mensaje)}</div>
+    ${esHoy ? '' : `<button type="button" class="link" data-act="dia-hab" data-v="${h}">Volver a hoy</button>`}</div>
+  </section>
+  ${grupos}
+  ${completados.length ? `<section class="card grupo-hab completados ${ui.verHabHechos ? '' : 'cerrado'}">
+    <button type="button" class="grupo-hab-h" data-act="ver-hab-hechos">${ic('check')}<h2>Completado</h2><span>${completados.length}</span>${ic(ui.verHabHechos ? 'izquierda' : 'derecha', 'flecha')}</button>
+    ${ui.verHabHechos ? `<div class="hab-lista">${completados.map((x) => filaHabito(x, dia)).join('')}</div>` : ''}
+  </section>` : ''}`;
+}
+
+function filaHabito(x, dia) {
+  const r = rachas(x.id);
+  const reg = registro(x.id, dia);
+  const on = !!reg;
+  const meta = x.meta_dias ? Math.min(100, (r.total / x.meta_dias) * 100) : null;
+  const det = x.es_ejercicio && on ? resumenEjercicio(reg.detalle) : '';
+  return `<div class="hab-fila ${on ? 'on' : ''}" style="--c:${colorHab(x)}" data-fila="${x.id}">
+    <button type="button" class="hab-ico" data-act="ir" data-v="habito" data-p="${x.id}" aria-label="Ver ${esc(x.nombre)}">${ic(x.icono)}</button>
+    <div class="cuerpo" data-act="ir" data-v="habito" data-p="${x.id}">
+      <div class="nombre">${esc(x.nombre)}</div>
+      <div class="hab-meta">
+        <span class="racha ${r.actual ? '' : 'cero'}">${ic('fuego')}${r.actual}</span>
+        ${x.meta_dias ? `<span class="meta-txt">${r.total}/${x.meta_dias} días</span><span class="barra"><i style="width:${meta}%"></i></span>` : `<span class="meta-txt">${plural(r.total, 'día', 'días')}</span>`}
       </div>
-      <button type="button" class="check-grande ${on ? 'on' : ''}" data-act="toggle-habito" data-id="${x.id}" data-fecha="${h}" aria-pressed="${on}" aria-label="${on ? 'Desmarcar' : 'Marcar'} ${esc(x.nombre)} hoy">${ic('check')}</button>
+      ${x.es_ejercicio && on ? `<div class="detalle-ej">${det ? esc(det) + ' · ' : ''}<button type="button" class="link" data-act="detalle-ejercicio" data-id="${x.id}" data-fecha="${dia}">${det ? 'Editar' : '+ Tiempo y repeticiones'}</button></div>` : ''}
+    </div>
+    <button type="button" class="hab-check ${on ? 'on' : ''}" data-act="toggle-habito" data-id="${x.id}" data-fecha="${dia}" aria-pressed="${on}" aria-label="${on ? 'Desmarcar' : 'Marcar'} ${esc(x.nombre)}">${ic('check')}</button>
+  </div>`;
+}
+
+function habitosSemana() {
+  const h = hoyISO();
+  const lunes = sumarDias(h, -((aFecha(h).getDay() + 6) % 7) + ui.semanaHab * 7);
+  const dias = Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i));
+  const habs = habitosOrden();
+  const titulo = ui.semanaHab === 0 ? 'Esta semana' : ui.semanaHab === -1 ? 'Semana pasada' : `${fmtFecha(dias[0])} – ${fmtFecha(dias[6])}`;
+  const filas = habs.map((x) => {
+    const hechos = dias.filter((f) => registro(x.id, f)).length;
+    return `<div class="sem-fila" style="--c:${colorHab(x)}">
+      <button type="button" class="sem-nombre" data-act="ir" data-v="habito" data-p="${x.id}"><span class="mini-ico">${ic(x.icono)}</span><span class="n">${esc(x.nombre)}</span></button>
+      ${dias.map((f) => `<button type="button" class="celda ${registro(x.id, f) ? 'on' : ''} ${f === h ? 'hoy' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${esc(x.nombre)} ${fmtFecha(f)}"></button>`).join('')}
+      <span class="sem-total">${hechos}/7</span>
+    </div>`;
+  }).join('');
+  const totalDia = (f) => habs.length ? Math.round((habs.filter((x) => registro(x.id, f)).length / habs.length) * 100) : 0;
+  return `
+  <section class="card">
+    <div class="cal-h">
+      <button type="button" class="icono-btn" data-act="semana-hab" data-v="-1" aria-label="Semana anterior">${ic('izquierda')}</button>
+      <h2>${esc(titulo)}</h2>
+      <button type="button" class="icono-btn" data-act="semana-hab" data-v="1" ${ui.semanaHab >= 0 ? 'disabled' : ''} aria-label="Semana siguiente">${ic('derecha')}</button>
+    </div>
+    <div class="semana-grid">
+      <div class="sem-fila cab"><span class="esp"></span>${dias.map((f) => `<span class="${f === h ? 'hoy' : ''}">${LETRAS[aFecha(f).getDay()]}<small>${aFecha(f).getDate()}</small></span>`).join('')}<span></span></div>
+      ${filas || '<div class="vacio">Sin hábitos.</div>'}
+      <div class="sem-fila pie"><span class="n">Cumplido</span>${dias.map((f) => `<span>${f > h ? '' : totalDia(f) + '%'}</span>`).join('')}<span></span></div>
+    </div>
+    <p class="ayuda-txt">Toca un cuadro para marcar o desmarcar ese día.</p>
+  </section>`;
+}
+
+function habitosMes() {
+  const h = hoyISO();
+  const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + ui.mesHabRes);
+  const y = base.getFullYear(); const m = base.getMonth();
+  const diasMes = new Date(y, m + 1, 0).getDate();
+  const offset = (new Date(y, m, 1).getDay() + 6) % 7;
+  const delMes = Array.from({ length: diasMes }, (_, i) => isoDe(new Date(y, m, i + 1)));
+  const transcurridos = delMes.filter((f) => f <= h).length;
+  const tarjetas = habitosOrden().map((x) => {
+    const hechos = delMes.filter((f) => registro(x.id, f)).length;
+    const pct = transcurridos ? Math.round((hechos / transcurridos) * 100) : 0;
+    const celdas = '<i class="v"></i>'.repeat(offset) + delMes.map((f) => `<button type="button" class="${registro(x.id, f) ? 'on' : ''} ${f === h ? 'hoy' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${esc(x.nombre)} ${fmtFecha(f)}"></button>`).join('');
+    return `<section class="card mes-hab" style="--c:${colorHab(x)}">
+      <button type="button" class="mes-hab-h" data-act="ir" data-v="habito" data-p="${x.id}"><span class="mini-ico">${ic(x.icono)}</span><span class="n">${esc(x.nombre)}</span>${anillo(pct, 34, 4, colorHab(x))}<b>${pct}%</b></button>
+      <div class="mini-cal">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d) => `<span class="mdn">${d}</span>`).join('')}${celdas}</div>
+      <div class="mes-hab-pie">${plural(hechos, 'día cumplido', 'días cumplidos')}</div>
     </section>`;
-  }).join('') : `<section class="card"><div class="vacio">${ic('habitos')}Crea tu primer hábito.</div></section>`}`;
+  }).join('');
+  return `
+  <section class="card"><div class="cal-h" style="margin:0">
+    <button type="button" class="icono-btn" data-act="mes-hab-res" data-v="-1" aria-label="Mes anterior">${ic('izquierda')}</button>
+    <h2>${mayus(base.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).replace(' de ', ' '))}</h2>
+    <button type="button" class="icono-btn" data-act="mes-hab-res" data-v="1" ${ui.mesHabRes >= 0 ? 'disabled' : ''} aria-label="Mes siguiente">${ic('derecha')}</button>
+  </div></section>
+  <div class="mes-grid">${tarjetas || '<section class="card"><div class="vacio">Sin hábitos.</div></section>'}</div>`;
+}
+
+// Lluvia de confeti cuando completas todos los hábitos del día
+function confeti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const capa = document.createElement('div');
+  capa.className = 'confeti';
+  const colores = ['#14C47F', '#2EE59D', '#E0A11B', '#3F74D8', '#E05BA8', '#6A4BC4'];
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('i');
+    p.style.left = Math.random() * 100 + '%';
+    p.style.background = colores[i % colores.length];
+    p.style.animationDelay = Math.random() * 0.3 + 's';
+    p.style.animationDuration = 0.9 + Math.random() * 0.8 + 's';
+    p.style.transform = `rotate(${Math.random() * 360}deg)`;
+    capa.appendChild(p);
+  }
+  document.body.appendChild(capa);
+  setTimeout(() => capa.remove(), 2000);
 }
 
 function vistaHabito(id) {
@@ -529,17 +661,22 @@ function vistaHabito(id) {
     + delMes.map((f, i) => `<button type="button" class="${r.fechas.has(f) ? 'on' : ''} ${f === h ? 'hoy' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${fmtFecha(f, true)}">${i + 1}</button>`).join('');
   const registrosEj = x.es_ejercicio ? db.habito_registros.filter((g) => g.habito_id === x.id).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 30) : [];
 
+  const momento = MOMENTOS.find(([k]) => k === (x.momento || ''))[1];
+  const metaPct = x.meta_dias ? Math.min(100, Math.round((r.total / x.meta_dias) * 100)) : 0;
   return `
+  <div style="--c:${colorHab(x)}">
   <button type="button" class="volver" data-act="ir" data-v="habitos">${ic('izquierda')}Hábitos</button>
-  <div class="cabeza"><div class="txt"><h1>${esc(x.nombre)}</h1><p>Toca un día del calendario para marcarlo o desmarcarlo.</p></div>
+  <div class="cabeza hab-det-cab"><span class="hab-ico grande">${ic(x.icono)}</span><div class="txt"><h1>${esc(x.nombre)}</h1><p>${esc(momento)} · Toca un día para marcarlo o desmarcarlo</p></div>
     <button type="button" class="btn" data-act="editar-habito" data-id="${x.id}">${ic('editar')}Editar</button></div>
+  ${x.meta_dias ? `<section class="card meta-card">${anillo(metaPct, 64, 7, colorHab(x))}<div><div class="pd-num">${r.total}<small>/${x.meta_dias} días</small></div>
+    <div class="pd-msg">${r.total >= x.meta_dias ? '¡Meta cumplida! 🏆' : `Te faltan ${plural(x.meta_dias - r.total, 'día', 'días')} para tu meta`}</div></div></section>` : ''}
   <div class="stats">
     <div class="stat"><div class="v" style="color:var(--naranja)">${r.actual}</div><div class="l">Racha actual (días)</div></div>
     <div class="stat"><div class="v">${r.mejor}</div><div class="l">Mejor racha</div></div>
     <div class="stat"><div class="v" style="color:var(--verde-ink)">${pct}%</div><div class="l">Cumplido este mes</div></div>
     <div class="stat"><div class="v">${r.total}</div><div class="l">Días en total</div></div>
   </div>
-  <section class="card">
+  <section class="card cal-hab">
     <div class="cal-h">
       <button type="button" class="icono-btn" data-act="mes-hab" data-v="-1" aria-label="Mes anterior">${ic('izquierda')}</button>
       <h2>${mayus(base.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).replace(' de ', ' '))}</h2>
@@ -554,7 +691,8 @@ function vistaHabito(id) {
         <div class="t">${fechaCorta(g.fecha)}</div><div class="meta">${esc(resumenEjercicio(g.detalle) || 'Sin detalle')}</div></div>
       <button type="button" class="icono-btn" data-act="detalle-ejercicio" data-id="${x.id}" data-fecha="${g.fecha}" aria-label="Editar detalle">${ic('editar')}</button></div>`).join('')}</div>`
       : '<div class="vacio">Aún no has registrado ejercicio.</div>'}
-  </section>` : ''}`;
+  </section>` : ''}
+  </div>`;
 }
 
 async function toggleHabito(id, fecha) {
@@ -567,17 +705,26 @@ async function toggleHabito(id, fecha) {
     else {
       await Datos.crear('habito_registros', { habito_id: id, fecha, detalle: null });
       const x = db.habitos.find((y) => y.id === id);
-      if (x && x.es_ejercicio) toast('¡Ejercicio marcado! 💪', false, { txt: 'Anotar detalle', fn: () => formEjercicio(id, fecha) });
+      const todos = db.habitos.length && db.habitos.every((y) => registro(y.id, fecha));
+      if (todos && fecha === hoyISO()) { confeti(); toast('¡Día perfecto! Cumpliste todos tus hábitos 🎉'); }
+      else if (x && x.es_ejercicio) toast('¡Ejercicio marcado! 💪', false, { txt: 'Anotar detalle', fn: () => formEjercicio(id, fecha) });
     }
   } catch (e) { /* ya avisado */ } finally { ocupado.delete(clave); }
 }
 
 function formHabito(id) {
-  const x = id ? db.habitos.find((y) => y.id === id) : { nombre: '', icono: 'estrella', es_ejercicio: false };
+  const x = id ? db.habitos.find((y) => y.id === id) : { nombre: '', icono: 'estrella', es_ejercicio: false, momento: '', meta_dias: null, color: COLORES_HABITO[db.habitos.length % COLORES_HABITO.length] };
+  const color = colorHab(x);
   abrirSheet(`${cabezaSheet(id ? 'Editar hábito' : 'Nuevo hábito')}
-  <form data-form="habito" data-id="${id || ''}">
+  <form data-form="habito" data-id="${id || ''}" style="--c:${color}">
     <div class="campo-f"><label for="f-nombre">Nombre</label><input id="f-nombre" type="text" name="nombre" required value="${esc(x.nombre)}" placeholder="Ej.: Caminar 30 minutos" autocomplete="off"></div>
-    <div class="campo-f"><span class="lbl">Ícono</span><div class="iconos" data-seg="icono">${ICONOS_HABITO.map((n) => `<button type="button" class="${x.icono === n ? 'on' : ''}" data-v="${n}" aria-label="${n}">${ic(n)}</button>`).join('')}</div><input type="hidden" name="icono" value="${esc(x.icono)}"></div>
+    <div class="campo-f"><span class="lbl">Ícono</span><div class="iconos iconos-hab" data-seg="icono">${ICONOS_HABITO.map((n) => `<button type="button" class="${x.icono === n ? 'on' : ''}" data-v="${n}" aria-label="${n}">${ic(n)}</button>`).join('')}</div><input type="hidden" name="icono" value="${esc(x.icono)}"></div>
+    <div class="campo-f"><span class="lbl">Color</span><div class="colores" data-seg="color">${COLORES_HABITO.map((c) => `<button type="button" class="${c === color ? 'on' : ''}" data-v="${c}" style="background:${c}" aria-label="Color ${c}"></button>`).join('')}</div><input type="hidden" name="color" value="${esc(color)}"></div>
+    <div class="campo-f"><span class="lbl">¿Cuándo?</span><div class="seg" data-seg="momento">${MOMENTOS.map(([k, t]) => `<button type="button" class="${(x.momento || '') === k ? 'on' : ''}" data-v="${k}">${t}</button>`).join('')}</div><input type="hidden" name="momento" value="${esc(x.momento || '')}"></div>
+    <div class="campo-f"><label for="f-meta">Meta (días)</label>
+      <div class="meta-fila"><input id="f-meta" type="number" name="meta_dias" min="1" max="1000" inputmode="numeric" value="${x.meta_dias || ''}" placeholder="Sin meta">
+      ${[21, 30, 66, 100].map((n) => `<button type="button" class="chip" data-act="meta-rapida" data-v="${n}">${n}</button>`).join('')}</div>
+      <span class="ayuda">Cuántos días quieres cumplir este hábito, por ejemplo 30 o 100.</span></div>
     <label class="campo-f" style="flex-direction:row;align-items:center;gap:10px"><input type="checkbox" name="es_ejercicio" ${x.es_ejercicio ? 'checked' : ''} style="width:20px;height:20px"> <span>Permitir anotar tiempo y repeticiones (ejercicio)</span></label>
     <div class="acciones">
       ${id ? `<button type="button" class="btn peligro" data-act="borrar-habito" data-id="${id}">${ic('basura')}Borrar</button>` : ''}
@@ -1005,7 +1152,20 @@ const ACCIONES = {
     toast('Completadas borradas');
   },
   // Hábitos
-  'toggle-habito': (el) => toggleHabito(el.dataset.id, el.dataset.fecha),
+  'toggle-habito': (el) => {
+    const fila = el.closest('.hab-fila');
+    if (fila && !el.classList.contains('on')) {
+      // Animación: el check se llena y la fila sale hacia "Completado"
+      el.classList.add('on', 'pop'); fila.classList.add('saliendo');
+      setTimeout(() => toggleHabito(el.dataset.id, el.dataset.fecha), 280);
+    } else toggleHabito(el.dataset.id, el.dataset.fecha);
+  },
+  'vista-hab': (el) => { ui.vistaHab = el.dataset.v; localStorage.setItem('apgvida-vista-hab', ui.vistaHab); render(); },
+  'dia-hab': (el) => { ui.diaHab = el.dataset.v; render(); },
+  'semana-hab': (el) => { ui.semanaHab = Math.min(0, ui.semanaHab + Number(el.dataset.v)); render(); },
+  'mes-hab-res': (el) => { ui.mesHabRes = Math.min(0, ui.mesHabRes + Number(el.dataset.v)); render(); },
+  'ver-hab-hechos': () => { ui.verHabHechos = !ui.verHabHechos; render(); },
+  'meta-rapida': (el) => { $('#f-meta').value = el.dataset.v; },
   'nuevo-habito': () => formHabito(null),
   'editar-habito': (el) => formHabito(el.dataset.id),
   'borrar-habito': async (el) => {
@@ -1073,6 +1233,7 @@ document.addEventListener('click', (ev) => {
     const cont = seg.parentElement;
     cont.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === seg));
     cont.parentElement.querySelector(`input[name="${cont.dataset.seg}"]`).value = seg.dataset.v;
+    if (cont.dataset.seg === 'color') cont.closest('form').style.setProperty('--c', seg.dataset.v);
     return;
   }
   const el = ev.target.closest('[data-act]');
@@ -1131,7 +1292,12 @@ const FORMULARIOS = {
     else await Datos.crear('tareas', { ...v, hecha: false, hecha_en: null });
   },
   habito: async (f, datos) => {
-    const v = { nombre: datos.get('nombre').trim(), icono: datos.get('icono') || 'estrella', es_ejercicio: datos.get('es_ejercicio') === 'on' };
+    const meta = parseInt(datos.get('meta_dias'), 10);
+    const v = {
+      nombre: datos.get('nombre').trim(), icono: datos.get('icono') || 'estrella', es_ejercicio: datos.get('es_ejercicio') === 'on',
+      color: /^#[0-9a-f]{6}$/i.test(datos.get('color')) ? datos.get('color') : null,
+      momento: vacioANull(datos.get('momento')), meta_dias: meta > 0 ? Math.min(meta, 1000) : null,
+    };
     cerrarSheet();
     if (f.dataset.id) await Datos.editar('habitos', f.dataset.id, v);
     else await Datos.crear('habitos', { ...v, orden: db.habitos.length });
