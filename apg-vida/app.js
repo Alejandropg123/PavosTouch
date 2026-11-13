@@ -44,6 +44,12 @@ const ICONOS = {
   escudo: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
   dinero: '<circle cx="12" cy="12" r="9"/><path d="M15 9a3 3 0 0 0-3-1.5c-1.7 0-3 .9-3 2.2 0 3 6 1.6 6 4.6 0 1.3-1.3 2.2-3 2.2A3.2 3.2 0 0 1 9 15M12 6v1.5M12 16.5V18"/>',
   lista: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  candado: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  abierto: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
+  celular: '<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/>',
+  banco: '<path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
+  trofeo: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a2 2 0 0 0 2 4M16 6h3a2 2 0 0 1-2 4M12 13v4M8 20h8M10 17h4"/>',
+  meta: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
   descargar: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 20h16"/>',
   kanban: '<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="13" rx="1.5"/>',
   matriz: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
@@ -52,7 +58,7 @@ const ICONOS = {
 };
 const ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[n] || ICONOS.estrella}</svg>`;
 const ICONOS_HABITO = ['sueno', 'libro', 'agua', 'ejercicio', 'meditar', 'corazon', 'manzana', 'sol', 'estrella', 'reloj', 'fuego', 'pulso'];
-const ICONOS_CATEGORIA = ['carpeta', 'familia', 'persona', 'estrella', 'carro', 'casa', 'trabajo', 'tarjeta', 'repetir', 'escudo', 'corazon', 'dinero', 'archivo', 'libro'];
+const ICONOS_CATEGORIA = ['celular', 'banco', 'carpeta', 'familia', 'persona', 'estrella', 'carro', 'casa', 'trabajo', 'tarjeta', 'repetir', 'escudo', 'corazon', 'dinero', 'archivo', 'libro'];
 
 // ---------- Utilidades ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -145,6 +151,19 @@ function pintarMarco(actual) {
     <button type="button" class="icono-btn" style="color:#fff" data-act="ir" data-v="vencimientos" aria-label="Vencimientos">${ic('alerta')}</button>
     <button type="button" class="avatar" data-act="ir" data-v="ajustes" aria-label="Ajustes">${esc(iniciales())}</button>`;
   $('#bottomnav').innerHTML = botones;
+  const fab = $('#fab');
+  fab.innerHTML = ic('mas');
+  fab.hidden = ['ajustes', 'documento', 'vencimientos'].includes(actual);
+}
+function menuAgregar() {
+  const op = (act, icono, t, s) => `<button type="button" class="menu-op" data-act="${act}">${ic(icono)}<span><b>${t}</b><small>${s}</small></span></button>`;
+  abrirSheet(`${cabezaSheet('¿Qué quieres agregar?')}
+    <div class="menu-ops">
+      ${op('nueva-tarea', 'tareas', 'Tarea', 'Algo que tienes que hacer')}
+      ${op('nuevo-pago', 'pagos', 'Pago', 'Un pago que se repite')}
+      ${op('nuevo-doc', 'archivo', 'Documento', 'PDF o foto al baúl')}
+      ${op('nuevo-habito', 'habitos', 'Hábito', 'Algo que quieres hacer a diario')}
+    </div>`);
 }
 
 let rutaAnterior = '';
@@ -196,45 +215,61 @@ function vistaInicio() {
   const pagosVencidos = pagos.filter((p) => p.proxima_fecha < h).length;
   const docs = docsPorVencer(30);
   const docsVencidos = docs.filter((d) => d.fecha_vencimiento < h).length;
-
-  const partes = [];
-  partes.push(tareas.length ? `tienes ${plural(tareas.length, 'tarea pendiente', 'tareas pendientes')}` : 'no tienes tareas pendientes');
-  if (habs.length) partes.push(hechos === habs.length ? 'ya cumpliste todos tus hábitos 🎉' : `te ${habs.length - hechos === 1 ? 'falta' : 'faltan'} ${plural(habs.length - hechos, 'hábito', 'hábitos')}`);
-  if (pagos.length) partes.push(`${plural(pagos.length, 'pago vence', 'pagos vencen')} esta semana${pagosVencidos ? ` (${pagosVencidos} ya ${pagosVencidos === 1 ? 'vencido' : 'vencidos'})` : ''}`);
-  if (docs.length) partes.push(`${plural(docs.length, 'documento está por vencer', 'documentos están por vencer')}`);
-  const frase = 'Hoy ' + partes.slice(0, -1).join(', ') + (partes.length > 1 ? ' y ' : '') + partes[partes.length - 1] + '.';
-
   const tareasHechasHoy = db.tareas.filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) === h).length;
   const estilo = ui.estiloInicio || Cuenta.ajuste('estiloInicio') || 'c';
   const datos = { tareas, habs, hechos, pagos, pagosVencidos, docs, docsVencidos, tareasHechasHoy };
   const cabecera = estilo === 'b' ? inicioB(datos) : estilo === 'c' ? inicioC(datos) : inicioA(datos);
+
+  // Hábitos de hoy en una sola fila (los pendientes primero)
+  const habsOrden = habs.slice().sort((a, b) => !!registro(a.id, h) - !!registro(b.id, h));
+  const filaHabs = habs.length ? `<section class="card hab-hoy">
+    <div class="card-h"><span class="ic">${ic('habitos')}</span><h2>Hábitos de hoy</h2>${anillo(habs.length ? (hechos / habs.length) * 100 : 0, 26, 4)}<span class="progreso-txt">${hechos}/${habs.length}</span></div>
+    <div class="hab-hoy-fila">${habsOrden.map((x) => {
+      const on = !!registro(x.id, h);
+      return `<button type="button" class="hab-chip ${on ? 'on' : ''}" style="--c:${colorHab(x)}" data-act="toggle-habito" data-id="${x.id}" data-fecha="${h}" aria-pressed="${on}"><span class="bola">${ic(on ? 'check' : x.icono)}</span><span class="n">${esc(x.nombre)}</span></button>`;
+    }).join('')}</div></section>` : '';
+
   return `
   <div class="saludo"><h1>${saludo}${nombre ? ', ' + esc(nombre) : ''} ${hora < 19 ? '☀️' : '🌙'}</h1><div class="fecha">${esc(mayus(fecha))}</div></div>
   ${cabecera}
-  <p class="frase">${esc(frase)}</p>
-  <div class="grid-2">
-    <section class="card">
-      <div class="card-h"><span class="ic">${ic('tareas')}</span><h2>Tareas del día</h2><button type="button" class="link" data-act="ir" data-v="tareas">Ver todas ${ic('derecha')}</button></div>
-      <form class="rapido" data-form="tarea-rapida" data-fecha="${h}"><input type="text" name="titulo" placeholder="Agregar tarea para hoy…" autocomplete="off" aria-label="Nueva tarea"><button class="btn primario" aria-label="Agregar">${ic('mas')}</button></form>
-      ${tareas.length ? `<div class="filas">${tareas.slice(0, 7).map((t) => filaTarea(t)).join('')}</div>` : `<div class="vacio">${ic('check')}Nada pendiente para hoy.</div>`}
-      ${tareas.length > 7 ? `<button type="button" class="link" data-act="ir" data-v="tareas">y ${tareas.length - 7} más ${ic('derecha')}</button>` : ''}
-    </section>
-    <section class="card">
-      <div class="card-h"><span class="ic">${ic('habitos')}</span><h2>Hábitos de hoy</h2><span class="progreso-txt">${hechos} de ${habs.length}</span></div>
-      ${habs.length ? `<div class="habitos-hoy">${habs.map((x) => {
-        const on = !!registro(x.id, h);
-        return `<button type="button" class="hab-mini ${on ? 'on' : ''}" style="--c:${colorHab(x)}" data-act="toggle-habito" data-id="${x.id}" data-fecha="${h}" aria-pressed="${on}"><span class="bola">${ic(on ? 'check' : x.icono)}</span>${esc(x.nombre)}</button>`;
-      }).join('')}</div>` : `<div class="vacio">Aún no tienes hábitos. <button type="button" class="link" data-act="ir" data-v="habitos">Crear uno</button></div>`}
-    </section>
-    <section class="card">
-      <div class="card-h"><span class="ic">${ic('pagos')}</span><h2>Pagos próximos</h2><button type="button" class="link" data-act="ir" data-v="pagos">Ver todos ${ic('derecha')}</button></div>
-      ${pagos.length ? `<div class="filas">${pagos.map(filaPago).join('')}</div>` : `<div class="vacio">${ic('check')}Sin pagos en los próximos 7 días.</div>`}
-    </section>
-    <section class="card">
-      <div class="card-h"><span class="ic">${ic('alerta')}</span><h2>Documentos por vencer</h2><button type="button" class="link" data-act="ir" data-v="vencimientos">Ver todos ${ic('derecha')}</button></div>
-      ${docs.length ? `<div class="filas">${docs.map((d) => filaVencimientoDoc(d)).join('')}</div>` : `<div class="vacio">${ic('check')}Ningún documento vence en los próximos 30 días.</div>`}
-    </section>
-  </div>`;
+  ${agendaInicio(datos)}
+  ${filaHabs}`;
+}
+
+// "Tu día": tareas, pagos y documentos en una sola lista, cada uno con su acción
+function agendaInicio(x) {
+  const h = hoyISO();
+  const items = [
+    ...x.tareas.map((t) => ({ f: t.fecha, tipo: 'tarea', o: t })),
+    ...x.pagos.map((p) => ({ f: p.proxima_fecha, tipo: 'pago', o: p })),
+    ...x.docs.map((d) => ({ f: d.fecha_vencimiento, tipo: 'doc', o: d })),
+  ].sort((a, b) => a.f.localeCompare(b.f) || a.tipo.localeCompare(b.tipo));
+  const grupos = [['Atrasado', items.filter((i) => i.f < h)], ['Hoy', items.filter((i) => i.f === h)], ['Próximos días', items.filter((i) => i.f > h).slice(0, 6)]];
+  const fila = (it) => {
+    if (it.tipo === 'tarea') {
+      const t = it.o; const l = t.lista_id && cat(t.lista_id);
+      return `<div class="ag-fila" data-fila="${t.id}">
+        <button type="button" class="check ${t.prioridad ? 'p-' + t.prioridad : ''}" data-act="toggle-tarea" data-id="${t.id}" aria-label="Marcar como hecha">${ic('check')}</button>
+        <div class="cuerpo" data-act="editar-tarea" data-id="${t.id}"><div class="t">${esc(t.titulo)}</div>
+          <div class="meta">${it.f < h ? `<span class="txt-rojo">${esc(fechaCorta(it.f))}</span>` : ''}${l ? `<span><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</span>` : ''}${t.repetir ? `<span>${ic('repetir')}</span>` : ''}</div></div></div>`;
+    }
+    if (it.tipo === 'pago') {
+      const p = it.o;
+      return `<div class="ag-fila"><span class="ag-ic pago">${ic('pagos')}</span>
+        <div class="cuerpo" data-act="editar-pago" data-id="${p.id}"><div class="t">${esc(p.nombre)}</div>
+          <div class="meta">${it.f !== h ? `<span class="${it.f < h ? 'txt-rojo' : ''}">${esc(fechaCorta(it.f))}</span>` : ''}<span>${p.valor != null ? dinero(p.valor) : 'Valor variable'}</span></div></div>
+        <button type="button" class="btn chico verde" data-act="pagar" data-id="${p.id}">Pagar</button></div>`;
+    }
+    const d = it.o; const e = estadoFecha(d.fecha_vencimiento, 30);
+    return `<div class="ag-fila"><span class="ag-ic doc">${ic('archivo')}</span>
+      <div class="cuerpo" data-act="ir" data-v="documento" data-p="${d.id}"><div class="t">${esc(d.nombre)}</div><div class="meta"><span>Documento${d.persona ? ' · ' + esc(d.persona) : ''}</span></div></div>
+      <span class="badge ${e.cls || 'verde'}">${esc(e.txt)}</span></div>`;
+  };
+  const cuerpo = grupos.filter(([, l]) => l.length).map(([t, l]) => `<div class="grupo-t">${t}</div><div class="filas">${l.map(fila).join('')}</div>`).join('');
+  return `<section class="card agenda">
+    <div class="card-h"><span class="ic">${ic('calendario')}</span><h2>Tu día</h2>${x.tareasHechasHoy ? `<span class="badge verde">${ic('check')}${x.tareasHechasHoy} hecha${x.tareasHechasHoy === 1 ? '' : 's'}</span>` : ''}</div>
+    ${cuerpo || `<div class="vacio">${ic('check')}Nada pendiente. ¡Disfruta tu día!</div>`}
+  </section>`;
 }
 
 // ----- Tres estilos para la parte de arriba del Inicio -----
@@ -270,28 +305,15 @@ function inicioB(x) {
     ${chip('vencimientos', 'alerta', x.docs.length, 'docs', x.docsVencidos)}
   </div>`;
 }
-// C: agenda con lo próximo
+// C: píldoras compactas
 function inicioC(x) {
-  const h = hoyISO();
-  const items = [
-    ...x.tareas.map((t) => ({ f: t.fecha, tipo: 'tarea', t: t.titulo, v: 'tareas', ic: 'tareas' })),
-    ...x.pagos.map((p) => ({ f: p.proxima_fecha, tipo: 'pago', t: p.nombre, sub: p.valor != null ? dinero(p.valor) : '', v: 'pagos', ic: 'pagos' })),
-    ...x.docs.map((d) => ({ f: d.fecha_vencimiento, tipo: 'doc', t: d.nombre, sub: 'Vence', v: 'vencimientos', ic: 'archivo' })),
-  ].sort((a, b) => a.f.localeCompare(b.f)).slice(0, 6);
   const pill = (v, icono, num, lbl, tono) => `<button type="button" class="ic-pill ${tono}" data-act="ir" data-v="${v}">${ic(icono)}<b>${num}</b>${lbl}</button>`;
   return `<div class="ic-pills">
-    ${pill('tareas', 'tareas', x.tareas.length, 'tareas', 't-verde')}
+    ${pill('tareas', 'tareas', x.tareas.length, x.tareas.length === 1 ? 'tarea' : 'tareas', 't-verde')}
     ${pill('habitos', 'habitos', `${x.hechos}/${x.habs.length}`, 'hábitos', 't-morado')}
-    ${pill('pagos', 'pagos', x.pagos.length, 'pagos', x.pagosVencidos ? 't-rojo' : 't-azul')}
+    ${pill('pagos', 'pagos', x.pagos.length, x.pagos.length === 1 ? 'pago' : 'pagos', x.pagosVencidos ? 't-rojo' : 't-azul')}
     ${pill('vencimientos', 'alerta', x.docs.length, 'docs', x.docsVencidos ? 't-rojo' : 't-naranja')}
-  </div>
-  <section class="card ic-agenda"><div class="card-h"><span class="ic">${ic('calendario')}</span><h2>Lo próximo</h2></div>
-    ${items.length ? `<div class="linea">${items.map((it) => {
-      const e = estadoFecha(it.f, 3);
-      return `<button type="button" class="li ${it.tipo}" data-act="ir" data-v="${it.v}"><span class="li-f ${it.f < h ? 'txt-rojo' : ''}">${esc(fechaCorta(it.f))}</span><span class="li-p"></span>
-        <span class="li-c"><span class="li-t">${ic(it.ic)}${esc(it.t)}</span>${it.sub ? `<span class="li-s">${esc(it.sub)}${it.tipo === 'doc' ? ' ' + esc(e.txt.toLowerCase()) : ''}</span>` : ''}</span></button>`;
-    }).join('')}</div>` : `<div class="vacio">${ic('check')}Nada pendiente en los próximos días.</div>`}
-  </section>`;
+  </div>`;
 }
 
 // =====================================================================
@@ -337,18 +359,22 @@ function filaTarea(t, compacta) {
 const VISTAS_TAREAS = [['lista', 'Lista', 'lista'], ['calendario', 'Calendario', 'calendario'], ['matriz', 'Matriz', 'matriz']];
 
 function vistaTareas() {
+  const h = hoyISO();
   const pend = db.tareas.filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
-  const listas = cats('lista');
   const cuerpo = ui.vistaTareas === 'calendario' ? tareasCalendario() : ui.vistaTareas === 'matriz' ? tareasMatriz() : tareasLista();
+  const cuenta = { hoy: pend.filter((t) => t.fecha && t.fecha <= h).length, proximas: pend.filter((t) => t.fecha && t.fecha > h).length, sinfecha: pend.filter((t) => !t.fecha).length, todas: pend.length };
   return `
   <div class="cabeza"><div class="txt"><h1>Tareas</h1><p>${plural(pend.length, 'pendiente', 'pendientes')}</p></div>
     <button type="button" class="btn" data-act="informe" data-v="tareas" aria-label="Descargar informe">${ic('descargar')}<span class="solo-pc">Informe</span></button>
     <button type="button" class="btn primario" data-act="nueva-tarea">${ic('mas')}Nueva</button></div>
-  <div class="vistas" role="tablist">${VISTAS_TAREAS.map(([k, t, i]) => `<button type="button" role="tab" aria-selected="${ui.vistaTareas === k}" class="${ui.vistaTareas === k ? 'on' : ''}" data-act="vista-tareas" data-v="${k}">${ic(i)}<span>${t}</span></button>`).join('')}</div>
-  <div class="listas-fila">
-    <button type="button" class="pill ${!ui.listaTareas ? 'on' : ''}" data-act="lista-tareas" data-v="">Todas</button>
-    ${listas.map((l) => `<button type="button" class="pill ${ui.listaTareas === l.id ? 'on' : ''}" data-act="lista-tareas" data-v="${l.id}"><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</button>`).join('')}
-    <button type="button" class="pill icono" data-act="gestor" data-tipo="lista" aria-label="Editar listas">${ic('editar')}</button>
+  <div class="toolbar">
+    <div class="seg mini iconos-vista" role="tablist">${VISTAS_TAREAS.map(([k, t, i]) => `<button type="button" role="tab" aria-selected="${ui.vistaTareas === k}" class="${ui.vistaTareas === k ? 'on' : ''}" data-act="vista-tareas" data-v="${k}" aria-label="${t}" title="${t}">${ic(i)}</button>`).join('')}</div>
+    ${ui.vistaTareas === 'lista' ? `<label class="pill-select">${ic('calendario')}<select data-cambio="filtro-tareas" aria-label="Qué tareas ver">
+      ${[['hoy', 'Hoy'], ['proximas', 'Próximas'], ['sinfecha', 'Sin fecha'], ['todas', 'Todas']].map(([k, t]) => `<option value="${k}" ${ui.filtroTareas === k ? 'selected' : ''}>${t} (${cuenta[k]})</option>`).join('')}</select></label>` : ''}
+    <label class="pill-select">${ui.listaTareas ? `<i class="punto" style="background:${colorLista(ui.listaTareas)}"></i>` : ic('lista')}<select data-cambio="lista-tareas" aria-label="Lista">
+      <option value="">Todas las listas</option>
+      ${cats('lista').map((l) => `<option value="${l.id}" ${ui.listaTareas === l.id ? 'selected' : ''}>${esc(l.nombre)}</option>`).join('')}
+      <option value="__editar">Editar listas…</option></select></label>
   </div>
   <div class="anim-entrada" data-anim="${ui.vistaTareas}">${cuerpo}</div>`;
 }
@@ -382,13 +408,9 @@ function tareasLista() {
   } else cuerpo = `<div class="filas">${lista.map((t) => filaTarea(t)).join('')}</div>`;
 
   return `
-  <div class="tabs">${Object.entries(filtros).map(([k, [t, l]]) => `<button type="button" class="${ui.filtroTareas === k ? 'on' : ''}" data-act="filtro-tareas" data-v="${k}">${t}${l.length ? `<span class="n">${l.length}</span>` : ''}</button>`).join('')}</div>
   <section class="card">
-    <form class="rapido" data-form="tarea-rapida" data-fecha="${ui.filtroTareas === 'hoy' ? h : ''}">
-      <input type="text" name="titulo" placeholder="${ui.filtroTareas === 'hoy' ? 'Agregar tarea para hoy…' : 'Agregar tarea…'}" autocomplete="off" aria-label="Nueva tarea">
-      <button class="btn primario" aria-label="Agregar">${ic('mas')}</button>
-    </form>
     ${cuerpo}
+    <button type="button" class="agregar-linea" data-act="nueva-tarea">${ic('mas')}Agregar tarea</button>
   </section>
   ${hechas.length ? `<section class="card">
     <div class="card-h"><h2>Completadas</h2><span class="cuenta">${hechas.length}</span>
@@ -432,11 +454,8 @@ function tareasCalendario() {
   </section>
   <section class="card">
     <div class="card-h"><h2>${esc(titulo)}</h2><span class="cuenta">${delDia.filter((t) => !t.hecha).length || ''}</span></div>
-    <form class="rapido" data-form="tarea-rapida" data-fecha="${sel}">
-      <input type="text" name="titulo" placeholder="Agregar tarea para este día…" autocomplete="off" aria-label="Nueva tarea">
-      <button class="btn primario" aria-label="Agregar">${ic('mas')}</button>
-    </form>
     ${delDia.length ? `<div class="filas">${delDia.map((t) => filaTarea(t)).join('')}</div>` : `<div class="vacio">${ic('calendario')}Sin tareas este día.</div>`}
+    <button type="button" class="agregar-linea" data-act="nueva-tarea">${ic('mas')}Agregar tarea este día</button>
   </section>`;
 }
 
@@ -492,26 +511,24 @@ async function toggleTarea(id) {
 function formTarea(id, preset = {}) {
   const t = id ? db.tareas.find((x) => x.id === id) : { titulo: '', fecha: preset.fecha || '', prioridad: null, lista_id: preset.lista_id || null, repetir: null, urgente: !!preset.urgente, importante: !!preset.importante };
   const seg = (name, opciones, val) => `<div class="seg" data-seg="${name}">${opciones.map(([v, txt]) => `<button type="button" class="${(val || '') === v ? 'on' : ''}" data-v="${v}">${txt}</button>`).join('')}</div><input type="hidden" name="${name}" value="${esc(val || '')}">`;
+  const q = cuadroDe(t);
+  const pasos = [
+    { t: 'Tarea', ayuda: '¿Qué tienes que hacer?', html: `
+      <div class="campo-f"><input id="f-titulo" type="text" name="titulo" required value="${esc(t.titulo)}" placeholder="Ej.: Pagar la administración" autocomplete="off" aria-label="Título" class="input-grande"></div>
+      <div class="campo-f"><span class="lbl">Lista</span>${chipsCategoria('lista', 'lista_id', t.lista_id)}</div>` },
+    { t: 'Cuándo', ayuda: '¿Para cuándo es?', html: `
+      <div class="sugerencias grande">${[['hoy', 'Hoy'], ['manana', 'Mañana'], ['finde', 'Fin de semana'], ['lunes', 'Próxima semana'], ['no', 'Sin fecha']].map(([k, tx]) => `<button type="button" class="chip" data-act="fecha-rapida" data-campo="f-fecha" data-v="${k}">${tx}</button>`).join('')}</div>
+      <div class="campo-f"><label for="f-fecha">O elige la fecha</label><input id="f-fecha" type="date" name="fecha" value="${esc(t.fecha || '')}"></div>
+      <div class="campo-f"><span class="lbl">¿Se repite?</span>${seg('repetir', [['', 'No'], ['diaria', 'Cada día'], ['semanal', 'Cada semana'], ['mensual', 'Cada mes']], t.repetir)}</div>` },
+    { t: 'Importancia', ayuda: '¿Qué tan importante es?', html: `
+      <div class="cuadros-sel" data-seg="cuadro">${CUADROS.map((c) => `<button type="button" class="${c.k} ${c === q ? 'on' : ''}" data-v="${c.k}"><span class="q-num">${c.n}</span><b>${esc(nombreCuadro(c))}</b><small>${c.ayuda}</small></button>`).join('')}</div>
+      <input type="hidden" name="cuadro" value="${q.k}">
+      <div class="campo-f" style="margin-top:14px"><span class="lbl">Prioridad</span>${seg('prioridad', [['', 'Ninguna'], ['alta', 'Alta'], ['media', 'Media'], ['baja', 'Baja']], t.prioridad)}</div>` },
+  ];
+  // Solo el título es obligatorio: "Guardar" está disponible desde el primer paso
   abrirSheet(`${cabezaSheet(id ? 'Editar tarea' : 'Nueva tarea')}
-  <form data-form="tarea" data-id="${id || ''}">
-    <div class="campo-f"><label for="f-titulo">Título</label><input id="f-titulo" type="text" name="titulo" required value="${esc(t.titulo)}" autocomplete="off"></div>
-    <div class="campo-f"><label for="f-fecha">Fecha</label><input id="f-fecha" type="date" name="fecha" value="${esc(t.fecha || '')}"><span class="ayuda">Opcional. Déjala vacía si no tiene fecha.</span></div>
-    <div class="campo-f"><span class="lbl">Matriz</span>
-      <div class="toggles">
-        <label class="toggle"><input type="checkbox" name="urgente" ${t.urgente ? 'checked' : ''}><span>⚡ Urgente</span></label>
-        <label class="toggle"><input type="checkbox" name="importante" ${t.importante ? 'checked' : ''}><span>⭐ Importante</span></label>
-      </div><span class="ayuda">Define en qué cuadro de la matriz aparece.</span></div>
-    <div class="campo-f"><span class="lbl">Prioridad</span>${seg('prioridad', [['', 'Ninguna'], ['alta', 'Alta'], ['media', 'Media'], ['baja', 'Baja']], t.prioridad)}</div>
-    <div class="campo-f"><label for="f-lista">Lista</label>${selectCategoria('lista', 'lista_id', t.lista_id, 'Sin lista')}</div>
-    <div class="campo-f"><span class="lbl">Repetir</span>${seg('repetir', [['', 'No'], ['diaria', 'Cada día'], ['semanal', 'Cada semana'], ['mensual', 'Cada mes']], t.repetir)}
-      <span class="ayuda">Al marcarla como hecha, pasa sola a la siguiente fecha.</span></div>
-    <div class="acciones">
-      ${id ? `<button type="button" class="btn peligro" data-act="borrar-tarea" data-id="${id}">${ic('basura')}Borrar</button>` : ''}
-      <span class="espacio"></span>
-      <button type="button" class="btn" data-act="cerrar">Cancelar</button>
-      <button class="btn primario">${ic('check')}Guardar</button>
-    </div>
-  </form>`);
+  <form data-form="tarea" data-id="${id || ''}">${wizard(pasos, { borrar: id ? `<button type="button" class="btn peligro" data-act="borrar-tarea" data-id="${id}">${ic('basura')}</button>` : '' })}</form>`);
+  prepararWizard();
 }
 
 // Formulario por pasos: muestra una pregunta a la vez con barra de progreso.
@@ -554,9 +571,9 @@ function moverWizard(w, destino) {
   if (campo && esEscritorio()) campo.focus();
 }
 const sugerencias = (campo, lista) => `<div class="sugerencias">${lista.map((s) => `<button type="button" class="chip" data-act="sugerir" data-campo="${campo}" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>`;
-function chipsCategoria(tipo, name, val) {
+function chipsCategoria(tipo, name, val, tam) {
   const opciones = cats(tipo).map((c) => [c.id, c.nombre, c.icono]);
-  return `<div class="seg chips-sel" data-seg="${name}">
+  return `<div class="seg chips-sel ${tam || ''}" data-seg="${name}">
     ${opciones.map(([v, t, i]) => `<button type="button" class="${val === v ? 'on' : ''}" data-v="${v}">${ic(i || 'carpeta')}${esc(t)}</button>`).join('')}
     <button type="button" class="nueva" data-act="nueva-cat-inline" data-tipo="${tipo}">${ic('mas')}Nueva</button>
   </div><input type="hidden" name="${name}" value="${esc(val || '')}">`;
@@ -599,6 +616,11 @@ const colorHab = (x) => x.color || COLOR_POR_ICONO[x.icono] || '#14C47F';
 const MOMENTOS = [['', 'Todo el día', 'reloj'], ['manana', 'Mañana', 'sol'], ['tarde', 'Tarde', 'sol'], ['noche', 'Noche', 'sueno']];
 const anillo = (pct, tam = 44, grosor = 5, color = 'var(--verde)') => `<span class="anillo" style="--p:${Math.round(pct)};--t:${tam}px;--g:${grosor}px;--c:${color}"></span>`;
 
+// Por defecto los días anteriores quedan bloqueados para no marcar uno por error
+const habBloqueado = () => Cuenta.ajuste('bloqueoHab') !== false;
+const diaEditable = (f) => f === hoyISO() || !habBloqueado();
+const botonCandado = () => `<button type="button" class="candado ${habBloqueado() ? 'on' : ''}" data-act="bloqueo-hab">${ic(habBloqueado() ? 'candado' : 'abierto')}<span>${habBloqueado() ? 'Días anteriores bloqueados' : 'Días anteriores editables'}</span></button>`;
+
 function vistaHabitos() {
   const vistas = [['hoy', 'Hoy', 'habitos'], ['semana', 'Semana', 'calendario'], ['mes', 'Mes', 'matriz']];
   const cuerpo = ui.vistaHab === 'semana' ? habitosSemana() : ui.vistaHab === 'mes' ? habitosMes() : habitosHoy();
@@ -607,6 +629,7 @@ function vistaHabitos() {
     <button type="button" class="btn" data-act="informe" data-v="habitos" aria-label="Descargar informe">${ic('descargar')}<span class="solo-pc">Informe</span></button>
     <button type="button" class="btn primario" data-act="nuevo-habito">${ic('mas')}Nuevo</button></div>
   <div class="vistas" role="tablist">${vistas.map(([k, t, i]) => `<button type="button" role="tab" aria-selected="${ui.vistaHab === k}" class="${ui.vistaHab === k ? 'on' : ''}" data-act="vista-hab" data-v="${k}">${ic(i)}<span>${t}</span></button>`).join('')}</div>
+  <div class="candado-fila">${botonCandado()}</div>
   <div class="anim-entrada">${cuerpo}</div>`;
 }
 
@@ -646,7 +669,7 @@ function habitosHoy() {
   <div class="tira-dias">${tira}</div>
   <section class="card progreso-dia">
     ${anillo(pct, 72, 8, 'var(--verde)')}<div class="pd-txt"><div class="pd-num">${hechos}<small>/${habs.length}</small></div><div class="pd-msg">${esc(mensaje)}</div>
-    ${esHoy ? '' : `<button type="button" class="link" data-act="dia-hab" data-v="${h}">Volver a hoy</button>`}</div>
+    ${esHoy ? '' : `${diaEditable(dia) ? '' : `<div class="pd-bloq">${ic('candado')}Solo lectura</div>`}<button type="button" class="link" data-act="dia-hab" data-v="${h}">Volver a hoy</button>`}</div>
   </section>
   ${grupos}
   ${completados.length ? `<section class="card grupo-hab completados ${ui.verHabHechos ? '' : 'cerrado'}">
@@ -671,7 +694,7 @@ function filaHabito(x, dia) {
       </div>
       ${x.es_ejercicio && on ? `<div class="detalle-ej">${det ? esc(det) + ' · ' : ''}<button type="button" class="link" data-act="detalle-ejercicio" data-id="${x.id}" data-fecha="${dia}">${det ? 'Editar' : '+ Tiempo y repeticiones'}</button></div>` : ''}
     </div>
-    <button type="button" class="hab-check ${on ? 'on' : ''}" data-act="toggle-habito" data-id="${x.id}" data-fecha="${dia}" aria-pressed="${on}" aria-label="${on ? 'Desmarcar' : 'Marcar'} ${esc(x.nombre)}">${ic('check')}</button>
+    <button type="button" class="hab-check ${on ? 'on' : ''} ${diaEditable(dia) ? '' : 'bloq'}" data-act="toggle-habito" data-id="${x.id}" data-fecha="${dia}" aria-pressed="${on}" aria-label="${on ? 'Desmarcar' : 'Marcar'} ${esc(x.nombre)}">${ic('check')}</button>
   </div>`;
 }
 
@@ -685,7 +708,7 @@ function habitosSemana() {
     const hechos = dias.filter((f) => registro(x.id, f)).length;
     return `<div class="sem-fila" style="--c:${colorHab(x)}">
       <button type="button" class="sem-nombre" data-act="ir" data-v="habito" data-p="${x.id}"><span class="mini-ico">${ic(x.icono)}</span><span class="n">${esc(x.nombre)}</span></button>
-      ${dias.map((f) => `<button type="button" class="celda ${registro(x.id, f) ? 'on' : ''} ${f === h ? 'hoy' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${esc(x.nombre)} ${fmtFecha(f)}"></button>`).join('')}
+      ${dias.map((f) => `<button type="button" class="celda ${registro(x.id, f) ? 'on' : ''} ${f === h ? 'hoy' : ''} ${f < h && !diaEditable(f) ? 'bloq' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${esc(x.nombre)} ${fmtFecha(f)}"></button>`).join('')}
       <span class="sem-total">${hechos}/7</span>
     </div>`;
   }).join('');
@@ -702,7 +725,7 @@ function habitosSemana() {
       ${filas || '<div class="vacio">Sin hábitos.</div>'}
       <div class="sem-fila pie"><span class="n">Cumplido</span>${dias.map((f) => `<span>${f > h ? '' : totalDia(f) + '%'}</span>`).join('')}<span></span></div>
     </div>
-    <p class="ayuda-txt">Toca un cuadro para marcar o desmarcar ese día.</p>
+    <p class="ayuda-txt">${habBloqueado() ? 'Solo puedes marcar el día de hoy. Toca el candado para editar días anteriores.' : 'Toca un cuadro para marcar o desmarcar ese día.'}</p>
   </section>`;
 }
 
@@ -715,13 +738,28 @@ function habitosMes() {
   const delMes = Array.from({ length: diasMes }, (_, i) => isoDe(new Date(y, m, i + 1)));
   const transcurridos = delMes.filter((f) => f <= h).length;
   const tarjetas = habitosOrden().map((x) => {
-    const hechos = delMes.filter((f) => registro(x.id, f)).length;
+    const r = rachas(x.id);
+    const hechos = delMes.filter((f) => r.fechas.has(f)).length;
     const pct = transcurridos ? Math.round((hechos / transcurridos) * 100) : 0;
-    const celdas = '<i class="v"></i>'.repeat(offset) + delMes.map((f) => `<button type="button" class="${registro(x.id, f) ? 'on' : ''} ${f === h ? 'hoy' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${esc(x.nombre)} ${fmtFecha(f)}"></button>`).join('');
-    return `<section class="card mes-hab" style="--c:${colorHab(x)}">
-      <button type="button" class="mes-hab-h" data-act="ir" data-v="habito" data-p="${x.id}"><span class="mini-ico">${ic(x.icono)}</span><span class="n">${esc(x.nombre)}</span>${anillo(pct, 34, 4, colorHab(x))}<b>${pct}%</b></button>
-      <div class="mini-cal">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d) => `<span class="mdn">${d}</span>`).join('')}${celdas}</div>
-      <div class="mes-hab-pie">${plural(hechos, 'día cumplido', 'días cumplidos')}</div>
+    const momento = MOMENTOS.find(([k]) => k === (x.momento || ''))[1];
+    const celdas = '<i class="v"></i>'.repeat(offset) + delMes.map((f, i) => `<button type="button" class="${r.fechas.has(f) ? 'on' : ''} ${f === h ? 'hoy' : ''} ${f < h && !diaEditable(f) ? 'bloq' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${esc(x.nombre)} ${fmtFecha(f)}">${i + 1}</button>`).join('');
+    const metaPct = x.meta_dias ? Math.min(100, Math.round((r.total / x.meta_dias) * 100)) : 0;
+    const animo = pct >= 80 ? '¡Excelente mes!' : pct >= 50 ? 'Vas bien' : pct > 0 ? 'Puedes mejorar' : 'Aún sin registros';
+    return `<section class="card mh" style="--c:${colorHab(x)}">
+      <button type="button" class="mh-h" data-act="ir" data-v="habito" data-p="${x.id}">
+        <span class="hab-ico">${ic(x.icono)}</span>
+        <span class="mh-tit"><b>${esc(x.nombre)}</b><small>${esc(momento)} · ${animo}</small></span>
+        <span class="mh-pct">${anillo(pct, 46, 5, colorHab(x))}<b>${pct}<small>%</small></b></span>
+      </button>
+      <div class="mh-cuerpo">
+        <div class="mh-cal">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d) => `<span class="mdn">${d}</span>`).join('')}${celdas}</div>
+        <div class="mh-stats">
+          <div class="mh-s"><span class="mh-si fuego">${ic('fuego')}</span><div><b>${r.actual}</b><small>Racha actual</small></div></div>
+          <div class="mh-s"><span class="mh-si">${ic('trofeo')}</span><div><b>${r.mejor}</b><small>Mejor racha</small></div></div>
+          <div class="mh-s"><span class="mh-si">${ic('check')}</span><div><b>${hechos}<small>/${transcurridos}</small></b><small>Días del mes</small></div></div>
+          ${x.meta_dias ? `<div class="mh-s meta"><span class="mh-si">${ic('meta')}</span><div><b>${r.total}<small>/${x.meta_dias}</small></b><small>Meta</small><span class="barra"><i style="width:${metaPct}%"></i></span></div></div>` : ''}
+        </div>
+      </div>
     </section>`;
   }).join('');
   return `
@@ -730,7 +768,7 @@ function habitosMes() {
     <h2>${mayus(base.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).replace(' de ', ' '))}</h2>
     <button type="button" class="icono-btn" data-act="mes-hab-res" data-v="1" ${ui.mesHabRes >= 0 ? 'disabled' : ''} aria-label="Mes siguiente">${ic('derecha')}</button>
   </div></section>
-  <div class="mes-grid">${tarjetas || '<section class="card"><div class="vacio">Sin hábitos.</div></section>'}</div>`;
+  <div class="mh-grid">${tarjetas || '<section class="card"><div class="vacio">Sin hábitos.</div></section>'}</div>`;
 }
 
 // Lluvia de confeti cuando completas todos los hábitos del día
@@ -766,7 +804,7 @@ function vistaHabito(id) {
   const cumplidosMes = transcurridos.filter((f) => r.fechas.has(f)).length;
   const pct = transcurridos.length ? Math.round((cumplidosMes / transcurridos.length) * 100) : 0;
   const celdas = Array.from({ length: offset }, () => '<span class="vacia"></span>').join('')
-    + delMes.map((f, i) => `<button type="button" class="${r.fechas.has(f) ? 'on' : ''} ${f === h ? 'hoy' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${fmtFecha(f, true)}">${i + 1}</button>`).join('');
+    + delMes.map((f, i) => `<button type="button" class="${r.fechas.has(f) ? 'on' : ''} ${f === h ? 'hoy' : ''} ${f < h && !diaEditable(f) ? 'bloq' : ''}" ${f > h ? 'disabled' : ''} data-act="toggle-habito" data-id="${x.id}" data-fecha="${f}" aria-label="${fmtFecha(f, true)}">${i + 1}</button>`).join('');
   const registrosEj = x.es_ejercicio ? db.habito_registros.filter((g) => g.habito_id === x.id).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 30) : [];
 
   const momento = MOMENTOS.find(([k]) => k === (x.momento || ''))[1];
@@ -774,6 +812,7 @@ function vistaHabito(id) {
   return `
   <div style="--c:${colorHab(x)}">
   <button type="button" class="volver" data-act="ir" data-v="habitos">${ic('izquierda')}Hábitos</button>
+  <div class="candado-fila">${botonCandado()}</div>
   <div class="cabeza hab-det-cab"><span class="hab-ico grande">${ic(x.icono)}</span><div class="txt"><h1>${esc(x.nombre)}</h1><p>${esc(momento)} · Toca un día para marcarlo o desmarcarlo</p></div>
     <button type="button" class="btn" data-act="editar-habito" data-id="${x.id}">${ic('editar')}Editar</button></div>
   ${x.meta_dias ? `<section class="card meta-card">${anillo(metaPct, 64, 7, colorHab(x))}<div><div class="pd-num">${r.total}<small>/${x.meta_dias} días</small></div>
@@ -880,7 +919,7 @@ function filaPago(p) {
   return `<div class="fila">
     <div class="cuerpo" data-act="editar-pago" data-id="${p.id}">
       <div class="t">${esc(p.nombre)}</div>
-      <div class="meta"><span class="badge ${e.cls}">${esc(e.txt)}</span>${c ? `<span>${esc(c.nombre)}</span>` : ''}<span>${FRECUENCIAS[p.frecuencia][0]}</span></div>
+      <div class="meta"><span class="badge ${e.cls}">${esc(e.txt)}</span>${c ? `<span>${esc(c.nombre)}</span>` : ''}${p.medio_id && cat(p.medio_id) ? `<span>${ic(cat(p.medio_id).icono || 'tarjeta')}${esc(cat(p.medio_id).nombre)}</span>` : ''}<span>${FRECUENCIAS[p.frecuencia][0]}</span></div>
     </div>
     <div class="derecha"><div class="monto">${p.valor != null && p.valor !== '' ? dinero(p.valor) : '<span class="badge">Variable</span>'}</div></div>
     <button type="button" class="btn chico verde pagar" data-act="pagar" data-id="${p.id}">${ic('check')}Pagado</button>
@@ -911,11 +950,12 @@ function vistaPagos() {
   const totalPagado = pagados.reduce((s, x) => s + (Number(x.valor) || 0), 0);
   const vencidosTodos = db.pagos.filter((p) => p.proxima_fecha < h).length;
   const porCat = {};
-  pendientes.forEach((p) => { const k = p.categoria_id && cat(p.categoria_id) ? p.categoria_id : ''; (porCat[k] = porCat[k] || { n: 0, v: 0 }); porCat[k].n++; porCat[k].v += Number(p.valor) || 0; });
+  const campo = ui.desgPagos === 'medio' ? 'medio_id' : 'categoria_id';
+  pendientes.forEach((p) => { const k = p[campo] && cat(p[campo]) ? p[campo] : ''; (porCat[k] = porCat[k] || { n: 0, v: 0 }); porCat[k].n++; porCat[k].v += Number(p.valor) || 0; });
   const maxV = Math.max(1, ...Object.values(porCat).map((x) => x.v));
   const desglose = Object.entries(porCat).sort((a, b) => b[1].v - a[1].v).map(([k, x]) => {
     const c = k && cat(k);
-    return `<button type="button" class="desg" data-act="cat-pagos" data-v="${k}"><span class="dn">${c ? ic(c.icono || 'dinero') : ic('dinero')}${esc(c ? c.nombre : 'Sin categoría')}<small>${x.n}</small></span>
+    return `<button type="button" class="desg" ${campo === 'categoria_id' ? `data-act="cat-pagos" data-v="${k}"` : ''}><span class="dn">${c ? ic(c.icono || 'dinero') : ic('dinero')}${esc(c ? c.nombre : campo === 'medio_id' ? 'Sin medio' : 'Sin categoría')}<small>${x.n}</small></span>
       <span class="db"><i style="width:${(x.v / maxV) * 100}%"></i></span><span class="dv">${x.v ? dinero(x.v) : 'Variable'}</span></button>`;
   }).join('');
   const etiqueta = ui.resPagos === 'mes' ? mayus(aFecha(ini).toLocaleDateString('es-CO', { month: 'long' })) : `${fmtFecha(ini)} – ${fmtFecha(fin)}`;
@@ -931,13 +971,14 @@ function vistaPagos() {
       <div class="rp-c"><span class="rp-ic ok">${ic('check')}</span><div><div class="v" style="color:var(--verde-ink)">${dinero(totalPagado)}</div><div class="l">Pagado · ${plural(pagados.length, 'pago', 'pagos')}</div></div></div>
       ${vencidosTodos ? `<div class="rp-c"><span class="rp-ic mal">${ic('alerta')}</span><div><div class="v" style="color:var(--rojo)">${vencidosTodos}</div><div class="l">${vencidosTodos === 1 ? 'Vencido' : 'Vencidos'}</div></div></div>` : ''}
     </div>
-    ${desglose ? `<div class="rp-desg"><div class="lbl-mini">Por categoría</div>${desglose}</div>` : ''}
+    ${desglose ? `<div class="rp-desg"><div class="rp-desg-h"><span class="lbl-mini">Desglose</span><div class="seg mini">${[['cat', 'Categoría'], ['medio', 'Medio de pago']].map(([k, t]) => `<button type="button" class="${(ui.desgPagos || 'cat') === k ? 'on' : ''}" data-act="desg-pagos" data-v="${k}">${t}</button>`).join('')}</div></div>${desglose}</div>` : ''}
   </section>
   <div class="barra-filtros">
     <label class="pill-select">${ic('lista')}<select data-cambio="cat-pagos" aria-label="Filtrar por categoría">
       <option value="">Todas las categorías</option>
       ${cats('pago').map((c) => `<option value="${c.id}" ${ui.catPagos === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}</select></label>
-    <button type="button" class="icono-btn" data-act="gestor" data-tipo="pago" aria-label="Editar categorías">${ic('ajustes')}</button>
+    <button type="button" class="pill-btn" data-act="gestor" data-tipo="pago">${ic('editar')}Categorías</button>
+    <button type="button" class="pill-btn" data-act="gestor" data-tipo="medio">${ic('tarjeta')}Medios de pago</button>
   </div>
   <section class="card">
     ${lista.length ? grupo('Vencidos', vencidos) + grupo('Próximos 7 días', semana) + grupo('Más adelante', despues)
@@ -961,27 +1002,44 @@ async function pagar(id) {
   } catch (e) { /* ya avisado */ } finally { ocupado.delete(id); }
 }
 
-const SUGERENCIAS_PAGO = [['Arriendo', 'Hogar'], ['Administración', 'Hogar'], ['Servicios públicos', 'Hogar'], ['Internet', 'Hogar'], ['Celular', 'Hogar'],
-  ['Tarjeta de crédito', 'Tarjeta'], ['Netflix', 'Suscrip'], ['Spotify', 'Suscrip'], ['Gimnasio', 'Suscrip'], ['Seguro del carro', 'Veh'], ['Cuota del carro', 'Veh']];
+const SUGERENCIAS_PAGO = [];   // en pagos la categoría se elige primero, no se deduce del nombre
+const GASTOS = [
+  [/hogar|casa|vivienda/, ['Arriendo', 'Administración', 'Mercado', 'Servicios públicos', 'Internet', 'Gas', 'Celular', 'Aseo']],
+  [/veh|carro|moto|transp/, ['Gasolina', 'Cuota del carro', 'SOAT', 'Seguro', 'Parqueadero', 'Lavado', 'Peajes', 'Mantenimiento']],
+  [/suscrip/, ['Netflix', 'Spotify', 'Disney+', 'YouTube Premium', 'Amazon Prime', 'iCloud', 'Gimnasio']],
+  [/tarjeta|cr[eé]dito|deuda|banco/, ['Tarjeta de crédito', 'Crédito libre inversión', 'Crédito hipotecario', 'Cuota de manejo']],
+  [/salud|m[eé]dic/, ['Medicina prepagada', 'EPS', 'Farmacia', 'Odontología']],
+  [/educa|colegio|estudio/, ['Colegio', 'Universidad', 'Cursos', 'Útiles']],
+  [/mascota/, ['Comida', 'Veterinario', 'Baño']],
+];
+function gastosDe(catId) {
+  const c = catId && cat(catId);
+  const n = normalizar(c ? c.nombre : '');
+  const m = GASTOS.find(([re]) => re.test(n));
+  return m ? m[1] : ['Mercado', 'Servicios', 'Transporte', 'Restaurantes', 'Otro'];
+}
+const sugerenciasGasto = (catId) => gastosDe(catId).map((s) => `<button type="button" class="chip" data-act="sugerir" data-campo="f-pn" data-v="${esc(s)}">${esc(s)}</button>`).join('');
 
 function formPago(id) {
-  const p = id ? db.pagos.find((x) => x.id === id) : { nombre: '', frecuencia: 'mensual', proxima_fecha: '', valor: null, categoria_id: ui.catPagos, notas: '' };
+  const p = id ? db.pagos.find((x) => x.id === id) : { nombre: '', frecuencia: 'mensual', proxima_fecha: '', valor: null, categoria_id: ui.catPagos, medio_id: null, notas: '' };
   const hist = id ? db.pago_historial.filter((x) => x.pago_id === id).sort((a, b) => b.pagado_en.localeCompare(a.pagado_en)).slice(0, 8) : [];
   const variable = id && p.valor == null;
   const pasos = [
-    { t: 'Pago', ayuda: '¿Qué vas a pagar?', html: `
-      <div class="campo-f"><label for="f-pn">Nombre</label><input id="f-pn" type="text" name="nombre" required value="${esc(p.nombre)}" placeholder="Ej.: Arriendo" autocomplete="off"></div>
-      ${id ? '' : sugerencias('f-pn', SUGERENCIAS_PAGO.map(([n]) => n))}
-      <div class="campo-f"><span class="lbl">Categoría</span>${chipsCategoria('pago', 'categoria_id', p.categoria_id)}</div>` },
-    { t: 'Valor', ayuda: '¿Cuánto pagas y cada cuánto?', html: `
-      <div class="campo-f"><label for="f-valor">Valor</label>
-        <div class="input-pesos"><span>$</span><input id="f-valor" type="number" name="valor" min="0" step="any" inputmode="decimal" value="${p.valor ?? ''}" placeholder="0" ${variable ? 'disabled' : ''}></div>
+    { t: 'Categoría', ayuda: '¿De qué categoría es el gasto?', html: `
+      <div class="campo-f">${chipsCategoria('pago', 'categoria_id', p.categoria_id, 'grande')}</div>` },
+    { t: 'Gasto', ayuda: '¿Qué gasto es?', html: `
+      <div class="campo-f"><input id="f-pn" type="text" name="nombre" required value="${esc(p.nombre)}" placeholder="Ej.: Mercado" autocomplete="off" aria-label="Tipo de gasto" class="input-grande"></div>
+      <div class="sugerencias" id="sug-gasto">${sugerenciasGasto(p.categoria_id)}</div>` },
+    { t: 'Valor', ayuda: '¿Cuánto, cada cuánto y con qué pagas?', html: `
+      <div class="campo-f">
+        <div class="input-pesos"><span>$</span><input id="f-valor" type="number" name="valor" min="0" step="any" inputmode="decimal" value="${p.valor ?? ''}" placeholder="0" aria-label="Valor" ${variable ? 'disabled' : ''}></div>
         <label class="toggle" style="margin-top:8px"><input type="checkbox" name="variable" data-cambio="valor-variable" ${variable ? 'checked' : ''}><span>El valor cambia cada vez</span></label></div>
-      <div class="campo-f"><span class="lbl">Frecuencia</span><div class="seg" data-seg="frecuencia">${Object.entries(FRECUENCIAS).map(([k, [t]]) => `<button type="button" class="${p.frecuencia === k ? 'on' : ''}" data-v="${k}">${t}</button>`).join('')}</div><input type="hidden" name="frecuencia" value="${esc(p.frecuencia)}"></div>` },
+      <div class="campo-f"><span class="lbl">Frecuencia</span><div class="seg" data-seg="frecuencia">${Object.entries(FRECUENCIAS).map(([k, [t]]) => `<button type="button" class="${p.frecuencia === k ? 'on' : ''}" data-v="${k}">${t}</button>`).join('')}</div><input type="hidden" name="frecuencia" value="${esc(p.frecuencia)}"></div>
+      <div class="campo-f"><span class="lbl">Medio de pago</span>${chipsCategoria('medio', 'medio_id', p.medio_id)}</div>` },
     { t: 'Fecha', ayuda: '¿Cuándo vence el próximo pago?', html: `
-      <div class="campo-f"><label for="f-prox">Próxima fecha de pago</label><input id="f-prox" type="date" name="proxima_fecha" required value="${esc(p.proxima_fecha)}">
-        <div class="sugerencias">${[5, 10, 15, 20, 30].map((n) => `<button type="button" class="chip" data-act="fecha-rapida" data-campo="f-prox" data-v="dia${n}">Día ${n}</button>`).join('')}<button type="button" class="chip" data-act="fecha-rapida" data-campo="f-prox" data-v="hoy">Hoy</button></div></div>
-      <div class="campo-f"><label for="f-notas">Notas</label><textarea id="f-notas" name="notas" placeholder="Ej.: referencia de pago, cuenta, dónde se paga…">${esc(p.notas || '')}</textarea></div>
+      <div class="sugerencias grande">${[5, 10, 15, 20, 30].map((n) => `<button type="button" class="chip" data-act="fecha-rapida" data-campo="f-prox" data-v="dia${n}">Día ${n}</button>`).join('')}<button type="button" class="chip" data-act="fecha-rapida" data-campo="f-prox" data-v="hoy">Hoy</button></div>
+      <div class="campo-f"><label for="f-prox">O elige la fecha</label><input id="f-prox" type="date" name="proxima_fecha" required value="${esc(p.proxima_fecha)}"></div>
+      <div class="campo-f"><label for="f-notas">Notas</label><textarea id="f-notas" name="notas" placeholder="Ej.: referencia de pago, cuenta…">${esc(p.notas || '')}</textarea></div>
       ${hist.length ? `<div class="grupo-t">Historial de pagos</div><div class="filas">${hist.map((x) => `<div class="fila"><div class="cuerpo" style="cursor:default"><div class="t">Pagado el ${fmtFecha(isoDe(new Date(x.pagado_en)))}</div><div class="meta">Vencía el ${fmtFecha(x.fecha_vencimiento)}</div></div><div class="derecha monto">${x.valor != null ? dinero(x.valor) : ''}</div></div>`).join('')}</div>` : ''}` },
   ];
   abrirSheet(`${cabezaSheet(id ? 'Editar pago' : 'Nuevo pago')}
@@ -1352,9 +1410,9 @@ async function generarInforme(tipo) {
     const delMes = pagos.filter((p) => p.proxima_fecha <= fin);
     const pagadosMes = db.pago_historial.filter((x) => { const f = isoDe(new Date(x.pagado_en)); return f >= ini && f <= fin; });
     resumen([[dinero(delMes.reduce((s, p) => s + (Number(p.valor) || 0), 0)), 'Por pagar este mes'], [dinero(pagadosMes.reduce((s, x) => s + (Number(x.valor) || 0), 0)), 'Pagado este mes'], [String(pagos.filter((p) => p.proxima_fecha < h).length), 'Vencidos']]);
-    tabla('Pagos recurrentes', ['Pago', 'Categoría', 'Frecuencia', 'Próximo pago', 'Valor', 'Estado'],
-      pagos.map((p) => { const e = estadoFecha(p.proxima_fecha, 3); return [p.nombre, (cat(p.categoria_id) || {}).nombre || '-', FRECUENCIAS[p.frecuencia][0], fmtFecha(p.proxima_fecha, true), p.valor != null ? dinero(p.valor) : 'Variable', e.cls ? e.txt : 'Al día']; }),
-      { ...colorEstado(5), columnStyles: { 4: { halign: 'right' } } });
+    tabla('Pagos recurrentes', ['Pago', 'Categoría', 'Medio', 'Frecuencia', 'Próximo pago', 'Valor', 'Estado'],
+      pagos.map((p) => { const e = estadoFecha(p.proxima_fecha, 3); return [p.nombre, (cat(p.categoria_id) || {}).nombre || '-', (cat(p.medio_id) || {}).nombre || '-', FRECUENCIAS[p.frecuencia][0], fmtFecha(p.proxima_fecha, true), p.valor != null ? dinero(p.valor) : 'Variable', e.cls ? e.txt : 'Al día']; }),
+      { ...colorEstado(6), columnStyles: { 5: { halign: 'right' } } });
     tabla('Pagado este mes', ['Pago', 'Vencía', 'Pagado el', 'Valor'],
       pagadosMes.map((x) => [(db.pagos.find((p) => p.id === x.pago_id) || {}).nombre || '-', fmtFecha(x.fecha_vencimiento, true), fmtFecha(isoDe(new Date(x.pagado_en)), true), x.valor != null ? dinero(x.valor) : '-']),
       { columnStyles: { 3: { halign: 'right' } } });
@@ -1373,7 +1431,8 @@ async function generarInforme(tipo) {
 // =====================================================================
 // AJUSTES Y CATEGORÍAS
 // =====================================================================
-const TIPOS = { lista: ['Listas de tareas', 'lista', 'Nueva lista'], pago: ['Categorías de pagos', 'categoría', 'Nueva categoría'], carpeta: ['Carpetas del baúl', 'carpeta', 'Nueva carpeta'] };
+const TIPOS = { lista: ['Listas de tareas', 'lista', 'Nueva lista'], pago: ['Categorías de pagos', 'categoría', 'Nueva categoría'], medio: ['Medios de pago', 'medio de pago', 'Nuevo medio de pago'], carpeta: ['Carpetas del baúl', 'carpeta', 'Nueva carpeta'] };
+const ICONO_TIPO = { carpeta: 'carpeta', pago: 'dinero', medio: 'tarjeta', lista: 'lista' };
 
 function vistaAjustes() {
   const fila = (tipo) => `<div class="fila"><div class="cuerpo" data-act="gestor" data-tipo="${tipo}"><div class="t">${TIPOS[tipo][0]}</div><div class="meta">${cats(tipo).map((c) => esc(c.nombre)).join(' · ') || 'Ninguna'}</div></div><span style="color:var(--muted)">${ic('derecha')}</span></div>`;
@@ -1388,8 +1447,12 @@ function vistaAjustes() {
     <div class="seg">${[['a', 'Tarjetas de colores'], ['b', 'Progreso del día'], ['c', 'Agenda']].map(([k, t]) => `<button type="button" class="${(Cuenta.ajuste('estiloInicio') || 'c') === k ? 'on' : ''}" data-act="estilo-inicio" data-v="${k}">${t}</button>`).join('')}</div>
   </section>
   <section class="card">
+    <div class="card-h"><span class="ic">${ic('candado')}</span><h2>Hábitos</h2></div>
+    <label class="interruptor"><input type="checkbox" data-act="bloqueo-hab" ${habBloqueado() ? 'checked' : ''}><span class="sw"></span><span>Bloquear la edición de días anteriores<small>Así no marcas por error un día que no es.</small></span></label>
+  </section>
+  <section class="card">
     <div class="card-h"><span class="ic">${ic('lista')}</span><h2>Organización</h2></div>
-    <div class="filas">${fila('lista')}${fila('pago')}${fila('carpeta')}
+    <div class="filas">${fila('lista')}${fila('pago')}${fila('medio')}${fila('carpeta')}
       <div class="fila"><div class="cuerpo" data-act="ir" data-v="habitos"><div class="t">Hábitos</div><div class="meta">${habitosOrden().map((x) => esc(x.nombre)).join(' · ')}</div></div><span style="color:var(--muted)">${ic('derecha')}</span></div>
     </div>
   </section>
@@ -1410,16 +1473,16 @@ function vistaAjustes() {
 function gestorCategorias(tipo) {
   const [titulo, , nueva] = TIPOS[tipo];
   const uso = (c) => (tipo === 'lista' ? db.tareas.filter((t) => t.lista_id === c.id).length
-    : tipo === 'pago' ? db.pagos.filter((p) => p.categoria_id === c.id).length : db.documentos.filter((d) => d.carpeta_id === c.id).length);
+    : tipo === 'pago' ? db.pagos.filter((p) => p.categoria_id === c.id).length : tipo === 'medio' ? db.pagos.filter((p) => p.medio_id === c.id).length : db.documentos.filter((d) => d.carpeta_id === c.id).length);
   abrirSheet(`${cabezaSheet(titulo)}
     <div class="filas">${cats(tipo).map((c) => `<div class="fila"><span class="doc-ic">${ic(c.icono || 'carpeta')}</span>
-      <div class="cuerpo" data-act="editar-categoria" data-id="${c.id}"><div class="t">${esc(c.nombre)}</div><div class="meta">${uso(c)} ${tipo === 'lista' ? 'tareas' : tipo === 'pago' ? 'pagos' : 'documentos'}</div></div>
+      <div class="cuerpo" data-act="editar-categoria" data-id="${c.id}"><div class="t">${esc(c.nombre)}</div><div class="meta">${uso(c)} ${tipo === 'lista' ? 'tareas' : tipo === 'pago' || tipo === 'medio' ? 'pagos' : 'documentos'}</div></div>
       <button type="button" class="icono-btn" data-act="editar-categoria" data-id="${c.id}" aria-label="Editar">${ic('editar')}</button></div>`).join('') || '<div class="vacio">Todavía no hay ninguna.</div>'}</div>
     <div class="acciones"><button type="button" class="btn primario bloque" data-act="nueva-categoria" data-tipo="${tipo}">${ic('mas')}${nueva}</button></div>`);
 }
 
 function formCategoria(tipo, id, volverA) {
-  const c = id ? cat(id) : { nombre: '', icono: tipo === 'carpeta' ? 'carpeta' : tipo === 'pago' ? 'dinero' : 'lista', tipo };
+  const c = id ? cat(id) : { nombre: '', icono: ICONO_TIPO[tipo] || 'lista', tipo };
   tipo = c.tipo;
   const iconos = tipo === 'lista' ? ['lista', ...ICONOS_CATEGORIA] : ICONOS_CATEGORIA;
   abrirSheet(`${cabezaSheet(id ? 'Editar ' + TIPOS[tipo][1] : TIPOS[tipo][2])}
@@ -1481,6 +1544,10 @@ const ACCIONES = {
   },
   // Hábitos
   'toggle-habito': (el) => {
+    if (!diaEditable(el.dataset.fecha)) {
+      toast('Los días anteriores están bloqueados 🔒', false, { txt: 'Desbloquear', fn: () => ACCIONES['bloqueo-hab']() });
+      return;
+    }
     const fila = el.closest('.hab-fila');
     if (fila && !el.classList.contains('on')) {
       // Animación: el check se llena y la fila sale hacia "Completado"
@@ -1491,6 +1558,19 @@ const ACCIONES = {
   'estilo-inicio': async (el) => { try { await Cuenta.guardarAjuste('estiloInicio', el.dataset.v); render(); toast('Estilo guardado'); } catch (e) { avisarError(e); } },
   informe: (el) => generarInforme(el.dataset.v),
   'res-pagos': (el) => { ui.resPagos = el.dataset.v; render(); },
+  fab: () => {
+    const { vista, param } = ruta();
+    if (vista === 'tareas') ACCIONES['nueva-tarea']();
+    else if (vista === 'habitos' || vista === 'habito') formHabito(null);
+    else if (vista === 'pagos') formPago(null);
+    else if (vista === 'baul' || vista === 'carpeta') formDocumento(null, vista === 'carpeta' && param !== 'sin' ? param : null);
+    else menuAgregar();
+  },
+  'bloqueo-hab': async () => {
+    try { await Cuenta.guardarAjuste('bloqueoHab', !habBloqueado()); render(); toast(habBloqueado() ? 'Días anteriores bloqueados 🔒' : 'Ahora puedes editar días anteriores'); }
+    catch (e) { avisarError(e); }
+  },
+  'desg-pagos': (el) => { ui.desgPagos = el.dataset.v; render(); },
   'vista-docs': (el) => { ui.vistaDocs = el.dataset.v; localStorage.setItem('apgvida-vista-docs', ui.vistaDocs); render(); },
   'orden-docs': (el) => { ui.ordenDocs = el.dataset.v; render(); },
   'kanban-por': (el) => { ui.kanbanPor = el.dataset.v; render(); },
@@ -1516,7 +1596,11 @@ const ACCIONES = {
   },
   'fecha-rapida': (el) => {
     const campo = $('#' + el.dataset.campo); const v = el.dataset.v; const h = hoyISO();
+    const diaSemana = aFecha(h).getDay();
     if (v === 'hoy') campo.value = h;
+    else if (v === 'manana') campo.value = sumarDias(h, 1);
+    else if (v === 'finde') campo.value = sumarDias(h, diaSemana === 6 ? 7 : (6 - diaSemana));
+    else if (v === 'lunes') campo.value = sumarDias(h, ((8 - diaSemana) % 7) || 7);
     else if (v === 'no') campo.value = '';
     else if (/^\d+a$/.test(v)) campo.value = sumarMeses(($('#f-exp') && $('#f-exp').value) || h, 12 * parseInt(v, 10));
     else if (/^dia\d+$/.test(v)) {
@@ -1534,7 +1618,7 @@ const ACCIONES = {
     const nombre = (window.prompt(`Nombre de la ${TIPOS[tipo][1]} nueva:`) || '').trim();
     if (!nombre) return;
     try {
-      const c = await Datos.crear('categorias', { tipo, nombre, icono: tipo === 'carpeta' ? 'carpeta' : tipo === 'pago' ? 'dinero' : 'lista', orden: cats(tipo).length });
+      const c = await Datos.crear('categorias', { tipo, nombre, icono: ICONO_TIPO[tipo] || 'lista', orden: cats(tipo).length });
       el.insertAdjacentHTML('beforebegin', `<button type="button" data-v="${c.id}">${ic(c.icono)}${esc(c.nombre)}</button>`);
       el.previousElementSibling.click();
     } catch (e) { /* ya avisado */ }
@@ -1590,7 +1674,7 @@ const ACCIONES = {
   'borrar-categoria': async (el) => {
     const c = cat(el.dataset.id);
     if (!c) return;
-    const aviso = c.tipo === 'carpeta' ? 'Los documentos que tenga quedarán en “Sin carpeta”.' : c.tipo === 'lista' ? 'Las tareas quedarán sin lista.' : 'Los pagos quedarán sin categoría.';
+    const aviso = c.tipo === 'carpeta' ? 'Los documentos que tenga quedarán en “Sin carpeta”.' : c.tipo === 'lista' ? 'Las tareas quedarán sin lista.' : c.tipo === 'medio' ? 'Los pagos quedarán sin medio de pago.' : 'Los pagos quedarán sin categoría.';
     if (!confirmar(`¿Borrar “${c.nombre}”? ${aviso}`)) return;
     const tipo = c.tipo;
     await Datos.borrar('categorias', c.id);
@@ -1607,12 +1691,15 @@ const ACCIONES = {
 
 document.addEventListener('click', (ev) => {
   // Botones de selección dentro de formularios (prioridad, repetir, íconos)
-  const seg = ev.target.closest('[data-seg] > button');
+  const seg = ev.target.closest('[data-seg] > button[data-v]');
   if (seg) {
     const cont = seg.parentElement;
     cont.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === seg));
     cont.parentElement.querySelector(`input[name="${cont.dataset.seg}"]`).value = seg.dataset.v;
     if (cont.dataset.seg === 'color') cont.closest('form').style.setProperty('--c', seg.dataset.v);
+    if (cont.dataset.seg === 'categoria_id' && $('#sug-gasto')) $('#sug-gasto').innerHTML = sugerenciasGasto(seg.dataset.v);
+    // En la matriz de la tarea, cada cuadro es una opción grande
+    if (cont.dataset.seg === 'cuadro') cont.parentElement.querySelector('input[name="cuadro"]').value = seg.dataset.v;
     return;
   }
   const el = ev.target.closest('[data-act]');
@@ -1672,6 +1759,11 @@ document.addEventListener('change', async (ev) => {
     } catch (e) { t.value = ''; }
     return;
   }
+  if (t.dataset.cambio === 'filtro-tareas') { ui.filtroTareas = t.value; render(); return; }
+  if (t.dataset.cambio === 'lista-tareas') {
+    if (t.value === '__editar') { t.value = ui.listaTareas || ''; gestorCategorias('lista'); return; }
+    ui.listaTareas = t.value || null; render(); return;
+  }
   if (t.dataset.cambio === 'carpeta-filtro') { ui.carpetaFiltro = t.value; render(); return; }
   if (t.dataset.cambio === 'valor-variable') { const v = $('#f-valor'); v.disabled = t.checked; if (t.checked) v.value = ''; return; }
   if (t.dataset.cambio === 'cat-pagos') { ui.catPagos = t.value || null; render(); return; }
@@ -1697,8 +1789,9 @@ const FORMULARIOS = {
     const v = {
       titulo: datos.get('titulo').trim(), fecha: vacioANull(datos.get('fecha')), prioridad: vacioANull(datos.get('prioridad')),
       lista_id: vacioANull(datos.get('lista_id')), repetir: vacioANull(datos.get('repetir')),
-      urgente: datos.get('urgente') === 'on', importante: datos.get('importante') === 'on',
     };
+    const q = CUADROS.find((c) => c.k === datos.get('cuadro')) || CUADROS[3];
+    v.urgente = q.urgente; v.importante = q.importante;
     if (v.repetir && !v.fecha) v.fecha = hoyISO();
     cerrarSheet();
     if (f.dataset.id) await Datos.editar('tareas', f.dataset.id, v);
@@ -1737,7 +1830,7 @@ const FORMULARIOS = {
     const valor = datos.get('valor');
     const v = {
       nombre: datos.get('nombre').trim(), valor: datos.get('variable') === 'on' || valor == null || valor === '' ? null : Number(valor), frecuencia: datos.get('frecuencia') || 'mensual',
-      proxima_fecha: datos.get('proxima_fecha'), categoria_id: vacioANull(datos.get('categoria_id')), notas: vacioANull(datos.get('notas').trim()),
+      proxima_fecha: datos.get('proxima_fecha'), categoria_id: vacioANull(datos.get('categoria_id')), medio_id: vacioANull(datos.get('medio_id')), notas: vacioANull(datos.get('notas').trim()),
     };
     cerrarSheet();
     if (f.dataset.id) await Datos.editar('pagos', f.dataset.id, v);
