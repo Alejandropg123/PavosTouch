@@ -44,6 +44,8 @@ const ICONOS = {
   escudo: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
   dinero: '<circle cx="12" cy="12" r="9"/><path d="M15 9a3 3 0 0 0-3-1.5c-1.7 0-3 .9-3 2.2 0 3 6 1.6 6 4.6 0 1.3-1.3 2.2-3 2.2A3.2 3.2 0 0 1 9 15M12 6v1.5M12 16.5V18"/>',
   lista: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  descargar: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 20h16"/>',
+  kanban: '<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="13" rx="1.5"/>',
   matriz: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
   pulso: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
   externo: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
@@ -86,7 +88,7 @@ const habitosOrden = () => db.habitos.slice().sort((a, b) => a.orden - b.orden |
 const registro = (habId, fecha) => db.habito_registros.find((r) => r.habito_id === habId && r.fecha === fecha);
 
 // ---------- Estado de la interfaz ----------
-const ui = { vistaHab: localStorage.getItem('apgvida-vista-hab') || 'hoy', diaHab: null, semanaHab: 0, mesHabRes: 0, verHabHechos: true, vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos' };
+const ui = { vistaDocs: localStorage.getItem('apgvida-vista-docs') || 'carpetas', kanbanPor: 'carpeta', ordenDocs: 'vence', carpetaFiltro: '', resPagos: 'semana', vistaHab: localStorage.getItem('apgvida-vista-hab') || 'hoy', diaHab: null, semanaHab: 0, mesHabRes: 0, verHabHechos: true, vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos' };
 const ocupado = new Set();   // evita dobles toques mientras se guarda
 
 // ---------- Toast ----------
@@ -202,14 +204,13 @@ function vistaInicio() {
   if (docs.length) partes.push(`${plural(docs.length, 'documento está por vencer', 'documentos están por vencer')}`);
   const frase = 'Hoy ' + partes.slice(0, -1).join(', ') + (partes.length > 1 ? ' y ' : '') + partes[partes.length - 1] + '.';
 
+  const tareasHechasHoy = db.tareas.filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) === h).length;
+  const estilo = ui.estiloInicio || Cuenta.ajuste('estiloInicio') || 'a';
+  const datos = { tareas, habs, hechos, pagos, pagosVencidos, docs, docsVencidos, tareasHechasHoy };
+  const cabecera = estilo === 'b' ? inicioB(datos) : estilo === 'c' ? inicioC(datos) : inicioA(datos);
   return `
   <div class="saludo"><h1>${saludo}${nombre ? ', ' + esc(nombre) : ''} ${hora < 19 ? '☀️' : '🌙'}</h1><div class="fecha">${esc(mayus(fecha))}</div></div>
-  <div class="resumen">
-    <button type="button" class="dato" data-act="ir" data-v="tareas"><div class="num">${tareas.length}</div><div class="lbl">Tareas hoy</div></button>
-    <button type="button" class="dato" data-act="ir" data-v="habitos"><div class="num">${hechos}/${habs.length}</div><div class="lbl">Hábitos</div></button>
-    <button type="button" class="dato" data-act="ir" data-v="pagos"><div class="num ${pagosVencidos ? 'alerta' : ''}">${pagos.length}</div><div class="lbl">Pagos esta semana</div></button>
-    <button type="button" class="dato" data-act="ir" data-v="vencimientos"><div class="num ${docsVencidos ? 'alerta' : ''}">${docs.length}</div><div class="lbl">Docs por vencer</div></button>
-  </div>
+  ${cabecera}
   <p class="frase">${esc(frase)}</p>
   <div class="grid-2">
     <section class="card">
@@ -234,6 +235,63 @@ function vistaInicio() {
       ${docs.length ? `<div class="filas">${docs.map((d) => filaVencimientoDoc(d)).join('')}</div>` : `<div class="vacio">${ic('check')}Ningún documento vence en los próximos 30 días.</div>`}
     </section>
   </div>`;
+}
+
+// ----- Tres estilos para la parte de arriba del Inicio -----
+// A: tarjetas de colores
+function inicioA(x) {
+  const pctHab = x.habs.length ? (x.hechos / x.habs.length) * 100 : 0;
+  const tarjeta = (v, tono, icono, num, lbl, sub, extra = '') => `<button type="button" class="ia-card ${tono}" data-act="ir" data-v="${v}">
+    <span class="ia-top"><span class="ia-ic">${ic(icono)}</span>${extra}</span>
+    <span class="ia-num">${num}</span><span class="ia-lbl">${lbl}</span>${sub ? `<span class="ia-sub">${sub}</span>` : ''}</button>`;
+  return `<div class="inicio-a">
+    ${tarjeta('tareas', 't-verde', 'tareas', x.tareas.length, x.tareas.length === 1 ? 'Tarea para hoy' : 'Tareas para hoy', x.tareasHechasHoy ? `${x.tareasHechasHoy} ya hecha${x.tareasHechasHoy === 1 ? '' : 's'} ✓` : '')}
+    ${tarjeta('habitos', 't-morado', 'habitos', `${x.hechos}<small>/${x.habs.length}</small>`, 'Hábitos de hoy', x.hechos === x.habs.length && x.habs.length ? '¡Completos! 🎉' : '', anillo(pctHab, 34, 4, '#6A4BC4'))}
+    ${tarjeta('pagos', 't-azul', 'pagos', x.pagos.length, 'Pagos esta semana', x.pagosVencidos ? `<b class="rojo">${x.pagosVencidos} vencido${x.pagosVencidos === 1 ? '' : 's'}</b>` : '')}
+    ${tarjeta('vencimientos', 't-naranja', 'alerta', x.docs.length, 'Docs por vencer', x.docsVencidos ? `<b class="rojo">${x.docsVencidos} vencido${x.docsVencidos === 1 ? '' : 's'}</b>` : 'Próximos 30 días')}
+  </div>`;
+}
+// B: anillo grande con el progreso del día
+function inicioB(x) {
+  const total = x.habs.length + x.tareas.length + x.tareasHechasHoy;
+  const hecho = x.hechos + x.tareasHechasHoy;
+  const pct = total ? Math.round((hecho / total) * 100) : 0;
+  const msg = pct === 100 ? '¡Día completo! 🎉' : pct >= 50 ? 'Vas muy bien, sigue así' : pct > 0 ? 'Buen comienzo' : 'Empecemos el día';
+  const chip = (v, icono, num, lbl, alerta) => `<button type="button" class="ib-chip ${alerta ? 'alerta' : ''}" data-act="ir" data-v="${v}">${ic(icono)}<b>${num}</b><span>${lbl}</span></button>`;
+  return `<section class="inicio-b">
+    <div class="ib-anillo">${anillo(pct, 108, 11, 'var(--verde-neon)')}<div class="ib-pct"><span>${pct}<small>%</small></span></div></div>
+    <div class="ib-txt"><div class="ib-msg">${msg}</div>
+      <div class="ib-det">${x.hechos}/${x.habs.length} hábitos · ${x.tareasHechasHoy}/${x.tareas.length + x.tareasHechasHoy} tareas</div></div>
+  </section>
+  <div class="ib-chips">
+    ${chip('tareas', 'tareas', x.tareas.length, 'tareas', false)}
+    ${chip('habitos', 'habitos', x.habs.length - x.hechos, 'hábitos por hacer', false)}
+    ${chip('pagos', 'pagos', x.pagos.length, 'pagos', x.pagosVencidos)}
+    ${chip('vencimientos', 'alerta', x.docs.length, 'docs', x.docsVencidos)}
+  </div>`;
+}
+// C: agenda con lo próximo
+function inicioC(x) {
+  const h = hoyISO();
+  const items = [
+    ...x.tareas.map((t) => ({ f: t.fecha, tipo: 'tarea', t: t.titulo, v: 'tareas', ic: 'tareas' })),
+    ...x.pagos.map((p) => ({ f: p.proxima_fecha, tipo: 'pago', t: p.nombre, sub: p.valor != null ? dinero(p.valor) : '', v: 'pagos', ic: 'pagos' })),
+    ...x.docs.map((d) => ({ f: d.fecha_vencimiento, tipo: 'doc', t: d.nombre, sub: 'Vence', v: 'vencimientos', ic: 'archivo' })),
+  ].sort((a, b) => a.f.localeCompare(b.f)).slice(0, 6);
+  const pill = (v, icono, num, lbl, tono) => `<button type="button" class="ic-pill ${tono}" data-act="ir" data-v="${v}">${ic(icono)}<b>${num}</b>${lbl}</button>`;
+  return `<div class="ic-pills">
+    ${pill('tareas', 'tareas', x.tareas.length, 'tareas', 't-verde')}
+    ${pill('habitos', 'habitos', `${x.hechos}/${x.habs.length}`, 'hábitos', 't-morado')}
+    ${pill('pagos', 'pagos', x.pagos.length, 'pagos', x.pagosVencidos ? 't-rojo' : 't-azul')}
+    ${pill('vencimientos', 'alerta', x.docs.length, 'docs', x.docsVencidos ? 't-rojo' : 't-naranja')}
+  </div>
+  <section class="card ic-agenda"><div class="card-h"><span class="ic">${ic('calendario')}</span><h2>Lo próximo</h2></div>
+    ${items.length ? `<div class="linea">${items.map((it) => {
+      const e = estadoFecha(it.f, 3);
+      return `<button type="button" class="li ${it.tipo}" data-act="ir" data-v="${it.v}"><span class="li-f ${it.f < h ? 'txt-rojo' : ''}">${esc(fechaCorta(it.f))}</span><span class="li-p"></span>
+        <span class="li-c"><span class="li-t">${ic(it.ic)}${esc(it.t)}</span>${it.sub ? `<span class="li-s">${esc(it.sub)}${it.tipo === 'doc' ? ' ' + esc(e.txt.toLowerCase()) : ''}</span>` : ''}</span></button>`;
+    }).join('')}</div>` : `<div class="vacio">${ic('check')}Nada pendiente en los próximos días.</div>`}
+  </section>`;
 }
 
 // =====================================================================
@@ -284,7 +342,8 @@ function vistaTareas() {
   const cuerpo = ui.vistaTareas === 'calendario' ? tareasCalendario() : ui.vistaTareas === 'matriz' ? tareasMatriz() : tareasLista();
   return `
   <div class="cabeza"><div class="txt"><h1>Tareas</h1><p>${plural(pend.length, 'pendiente', 'pendientes')}</p></div>
-    <button type="button" class="btn primario" data-act="nueva-tarea">${ic('mas')}Nueva tarea</button></div>
+    <button type="button" class="btn" data-act="informe" data-v="tareas" aria-label="Descargar informe">${ic('descargar')}<span class="solo-pc">Informe</span></button>
+    <button type="button" class="btn primario" data-act="nueva-tarea">${ic('mas')}Nueva</button></div>
   <div class="vistas" role="tablist">${VISTAS_TAREAS.map(([k, t, i]) => `<button type="button" role="tab" aria-selected="${ui.vistaTareas === k}" class="${ui.vistaTareas === k ? 'on' : ''}" data-act="vista-tareas" data-v="${k}">${ic(i)}<span>${t}</span></button>`).join('')}</div>
   <div class="listas-fila">
     <button type="button" class="pill ${!ui.listaTareas ? 'on' : ''}" data-act="lista-tareas" data-v="">Todas</button>
@@ -455,6 +514,54 @@ function formTarea(id, preset = {}) {
   </form>`);
 }
 
+// Formulario por pasos: muestra una pregunta a la vez con barra de progreso.
+function wizard(pasos, editando) {
+  const n = pasos.length;
+  return `<div class="wiz" data-paso="0" data-total="${n}" data-editando="${editando ? 1 : 0}">
+    <div class="wiz-puntos">${pasos.map((p, i) => `<button type="button" class="${i === 0 ? 'on' : ''}" data-act="wiz-ir" data-i="${i}" aria-label="Paso ${i + 1}: ${esc(p.t)}"><b>${i + 1}</b><span>${esc(p.t)}</span></button>`).join('')}</div>
+    <div class="wiz-prog"><i style="width:${100 / n}%"></i></div>
+    ${pasos.map((p, i) => `<div class="wiz-paso ${i === 0 ? 'on' : ''}" data-i="${i}">${p.ayuda ? `<p class="wiz-ayuda">${p.ayuda}</p>` : ''}${p.html}</div>`).join('')}
+    <div class="acciones wiz-acc">
+      <button type="button" class="btn wiz-atras" data-act="wiz-atras">${ic('izquierda')}Atrás</button>
+      <button type="button" class="btn wiz-cancelar" data-act="cerrar">Cancelar</button>
+      ${editando && editando.borrar ? editando.borrar : ''}
+      <span class="espacio"></span>
+      <button type="button" class="btn primario wiz-sig" data-act="wiz-sig">Siguiente${ic('derecha')}</button>
+      <button class="btn primario wiz-fin">${ic('check')}Guardar</button>
+    </div>
+  </div>`;
+}
+function moverWizard(w, destino) {
+  const total = Number(w.dataset.total);
+  const actual = Number(w.dataset.paso);
+  if (destino < 0 || destino >= total || destino === actual) return;
+  // Antes de avanzar, revisa que lo obligatorio del paso actual esté lleno
+  if (destino > actual) {
+    const invalido = [...w.querySelectorAll(`.wiz-paso[data-i="${actual}"] input, .wiz-paso[data-i="${actual}"] select`)].find((x) => !x.checkValidity());
+    if (invalido) { invalido.reportValidity(); return; }
+  }
+  w.dataset.paso = destino;
+  w.querySelectorAll('.wiz-paso').forEach((p) => {
+    const i = Number(p.dataset.i);
+    p.classList.toggle('on', i === destino);
+    p.classList.toggle('desde-izq', i === destino && destino < actual);
+  });
+  w.querySelectorAll('.wiz-puntos button').forEach((b, i) => { b.classList.toggle('on', i === destino); b.classList.toggle('hecho', i < destino); });
+  w.querySelector('.wiz-prog i').style.width = ((destino + 1) / total) * 100 + '%';
+  w.classList.toggle('primero', destino === 0);
+  w.classList.toggle('ultimo', destino === total - 1);
+  const campo = w.querySelector(`.wiz-paso[data-i="${destino}"] input:not([type=hidden]):not([type=file]):not([type=checkbox])`);
+  if (campo && esEscritorio()) campo.focus();
+}
+const sugerencias = (campo, lista) => `<div class="sugerencias">${lista.map((s) => `<button type="button" class="chip" data-act="sugerir" data-campo="${campo}" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>`;
+function chipsCategoria(tipo, name, val) {
+  const opciones = cats(tipo).map((c) => [c.id, c.nombre, c.icono]);
+  return `<div class="seg chips-sel" data-seg="${name}">
+    ${opciones.map(([v, t, i]) => `<button type="button" class="${val === v ? 'on' : ''}" data-v="${v}">${ic(i || 'carpeta')}${esc(t)}</button>`).join('')}
+    <button type="button" class="nueva" data-act="nueva-cat-inline" data-tipo="${tipo}">${ic('mas')}Nueva</button>
+  </div><input type="hidden" name="${name}" value="${esc(val || '')}">`;
+}
+
 function selectCategoria(tipo, name, val, vacio) {
   return `<select id="f-${tipo}" name="${name}">${vacio ? `<option value="">${esc(vacio)}</option>` : ''}
     ${cats(tipo).map((c) => `<option value="${c.id}" ${c.id === val ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
@@ -497,7 +604,8 @@ function vistaHabitos() {
   const cuerpo = ui.vistaHab === 'semana' ? habitosSemana() : ui.vistaHab === 'mes' ? habitosMes() : habitosHoy();
   return `
   <div class="cabeza"><div class="txt"><h1>Hábitos</h1><p>Pequeñas acciones, todos los días</p></div>
-    <button type="button" class="btn primario" data-act="nuevo-habito">${ic('mas')}Nuevo hábito</button></div>
+    <button type="button" class="btn" data-act="informe" data-v="habitos" aria-label="Descargar informe">${ic('descargar')}<span class="solo-pc">Informe</span></button>
+    <button type="button" class="btn primario" data-act="nuevo-habito">${ic('mas')}Nuevo</button></div>
   <div class="vistas" role="tablist">${vistas.map(([k, t, i]) => `<button type="button" role="tab" aria-selected="${ui.vistaHab === k}" class="${ui.vistaHab === k ? 'on' : ''}" data-act="vista-hab" data-v="${k}">${ic(i)}<span>${t}</span></button>`).join('')}</div>
   <div class="anim-entrada">${cuerpo}</div>`;
 }
@@ -779,31 +887,57 @@ function filaPago(p) {
   </div>`;
 }
 
+function rangoPeriodo(tipo) {
+  const h = hoyISO();
+  if (tipo === 'mes') { const ini = h.slice(0, 8) + '01'; return [ini, sumarDias(sumarMeses(ini, 1), -1)]; }
+  const ini = sumarDias(h, -((aFecha(h).getDay() + 6) % 7));   // lunes
+  return [ini, sumarDias(ini, 6)];
+}
+
 function vistaPagos() {
   const h = hoyISO();
-  const mesActual = h.slice(0, 7);
   const lista = db.pagos.filter((p) => !ui.catPagos || p.categoria_id === ui.catPagos).sort((a, b) => a.proxima_fecha.localeCompare(b.proxima_fecha));
   const vencidos = lista.filter((p) => p.proxima_fecha < h);
   const semana = lista.filter((p) => p.proxima_fecha >= h && diasEntre(h, p.proxima_fecha) <= 7);
   const despues = lista.filter((p) => diasEntre(h, p.proxima_fecha) > 7);
-  const pendMes = db.pagos.filter((p) => p.proxima_fecha.slice(0, 7) <= mesActual);
-  const totalPend = pendMes.reduce((s, p) => s + (Number(p.valor) || 0), 0);
-  const pagadoMes = db.pago_historial.filter((x) => isoDe(new Date(x.pagado_en)).slice(0, 7) === mesActual);
-  const totalPagado = pagadoMes.reduce((s, x) => s + (Number(x.valor) || 0), 0);
   const grupo = (t, l) => (l.length ? `<div class="grupo-t">${t}</div><div class="filas">${l.map(filaPago).join('')}</div>` : '');
 
+  // Resumen del periodo (semana o mes)
+  const [ini, fin] = rangoPeriodo(ui.resPagos);
+  const pendientes = db.pagos.filter((p) => p.proxima_fecha <= fin);
+  const totalPend = pendientes.reduce((s, p) => s + (Number(p.valor) || 0), 0);
+  const variables = pendientes.filter((p) => p.valor == null).length;
+  const pagados = db.pago_historial.filter((x) => { const f = isoDe(new Date(x.pagado_en)); return f >= ini && f <= fin; });
+  const totalPagado = pagados.reduce((s, x) => s + (Number(x.valor) || 0), 0);
+  const vencidosTodos = db.pagos.filter((p) => p.proxima_fecha < h).length;
+  const porCat = {};
+  pendientes.forEach((p) => { const k = p.categoria_id && cat(p.categoria_id) ? p.categoria_id : ''; (porCat[k] = porCat[k] || { n: 0, v: 0 }); porCat[k].n++; porCat[k].v += Number(p.valor) || 0; });
+  const maxV = Math.max(1, ...Object.values(porCat).map((x) => x.v));
+  const desglose = Object.entries(porCat).sort((a, b) => b[1].v - a[1].v).map(([k, x]) => {
+    const c = k && cat(k);
+    return `<button type="button" class="desg" data-act="cat-pagos" data-v="${k}"><span class="dn">${c ? ic(c.icono || 'dinero') : ic('dinero')}${esc(c ? c.nombre : 'Sin categoría')}<small>${x.n}</small></span>
+      <span class="db"><i style="width:${(x.v / maxV) * 100}%"></i></span><span class="dv">${x.v ? dinero(x.v) : 'Variable'}</span></button>`;
+  }).join('');
+  const etiqueta = ui.resPagos === 'mes' ? mayus(aFecha(ini).toLocaleDateString('es-CO', { month: 'long' })) : `${fmtFecha(ini)} – ${fmtFecha(fin)}`;
+
   return `
-  <div class="cabeza"><div class="txt"><h1>Pagos recurrentes</h1><p>Marca cada pago con un toque y pasa solo al siguiente periodo.</p></div>
-    <button type="button" class="btn primario" data-act="nuevo-pago">${ic('mas')}Nuevo pago</button></div>
-  <section class="card"><div class="total-mes">
-    <div><div class="v">${dinero(totalPend)}</div><div class="l">Por pagar este mes · ${plural(pendMes.length, 'pago', 'pagos')}</div></div>
-    <div><div class="v" style="color:var(--verde-ink)">${dinero(totalPagado)}</div><div class="l">Pagado este mes · ${plural(pagadoMes.length, 'pago', 'pagos')}</div></div>
-    ${vencidos.length ? `<div><div class="v" style="color:var(--rojo)">${vencidos.length}</div><div class="l">${vencidos.length === 1 ? 'Vencido' : 'Vencidos'}</div></div>` : ''}
-  </div></section>
-  <div class="chips" style="margin-top:14px">
-    <button type="button" class="chip ${!ui.catPagos ? 'on' : ''}" data-act="cat-pagos" data-v="">Todos</button>
-    ${cats('pago').map((c) => `<button type="button" class="chip ${ui.catPagos === c.id ? 'on' : ''}" data-act="cat-pagos" data-v="${c.id}">${esc(c.nombre)}</button>`).join('')}
-    <button type="button" class="chip" data-act="gestor" data-tipo="pago">${ic('editar')} Categorías</button>
+  <div class="cabeza"><div class="txt"><h1>Pagos</h1><p>Un toque en “Pagado” y pasa al siguiente periodo</p></div>
+    <button type="button" class="btn" data-act="informe" data-v="pagos" aria-label="Descargar informe">${ic('descargar')}<span class="solo-pc">Informe</span></button>
+    <button type="button" class="btn primario" data-act="nuevo-pago">${ic('mas')}Nuevo</button></div>
+  <section class="card resumen-pagos">
+    <div class="rp-h"><div class="seg mini">${[['semana', 'Semana'], ['mes', 'Mes']].map(([k, t]) => `<button type="button" class="${ui.resPagos === k ? 'on' : ''}" data-act="res-pagos" data-v="${k}">${t}</button>`).join('')}</div><span class="rp-rango">${esc(etiqueta)}</span></div>
+    <div class="rp-cifras">
+      <div class="rp-c"><span class="rp-ic pend">${ic('reloj')}</span><div><div class="v">${dinero(totalPend)}</div><div class="l">Por pagar · ${plural(pendientes.length, 'pago', 'pagos')}${variables ? ` (${variables} variable${variables === 1 ? '' : 's'})` : ''}</div></div></div>
+      <div class="rp-c"><span class="rp-ic ok">${ic('check')}</span><div><div class="v" style="color:var(--verde-ink)">${dinero(totalPagado)}</div><div class="l">Pagado · ${plural(pagados.length, 'pago', 'pagos')}</div></div></div>
+      ${vencidosTodos ? `<div class="rp-c"><span class="rp-ic mal">${ic('alerta')}</span><div><div class="v" style="color:var(--rojo)">${vencidosTodos}</div><div class="l">${vencidosTodos === 1 ? 'Vencido' : 'Vencidos'}</div></div></div>` : ''}
+    </div>
+    ${desglose ? `<div class="rp-desg"><div class="lbl-mini">Por categoría</div>${desglose}</div>` : ''}
+  </section>
+  <div class="barra-filtros">
+    <label class="pill-select">${ic('lista')}<select data-cambio="cat-pagos" aria-label="Filtrar por categoría">
+      <option value="">Todas las categorías</option>
+      ${cats('pago').map((c) => `<option value="${c.id}" ${ui.catPagos === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}</select></label>
+    <button type="button" class="icono-btn" data-act="gestor" data-tipo="pago" aria-label="Editar categorías">${ic('ajustes')}</button>
   </div>
   <section class="card">
     ${lista.length ? grupo('Vencidos', vencidos) + grupo('Próximos 7 días', semana) + grupo('Más adelante', despues)
@@ -827,29 +961,32 @@ async function pagar(id) {
   } catch (e) { /* ya avisado */ } finally { ocupado.delete(id); }
 }
 
+const SUGERENCIAS_PAGO = [['Arriendo', 'Hogar'], ['Administración', 'Hogar'], ['Servicios públicos', 'Hogar'], ['Internet', 'Hogar'], ['Celular', 'Hogar'],
+  ['Tarjeta de crédito', 'Tarjeta'], ['Netflix', 'Suscrip'], ['Spotify', 'Suscrip'], ['Gimnasio', 'Suscrip'], ['Seguro del carro', 'Veh'], ['Cuota del carro', 'Veh']];
+
 function formPago(id) {
-  const p = id ? db.pagos.find((x) => x.id === id) : { nombre: '', frecuencia: 'mensual', proxima_fecha: hoyISO(), valor: null, categoria_id: ui.catPagos, notas: '' };
+  const p = id ? db.pagos.find((x) => x.id === id) : { nombre: '', frecuencia: 'mensual', proxima_fecha: '', valor: null, categoria_id: ui.catPagos, notas: '' };
   const hist = id ? db.pago_historial.filter((x) => x.pago_id === id).sort((a, b) => b.pagado_en.localeCompare(a.pagado_en)).slice(0, 8) : [];
+  const variable = id && p.valor == null;
+  const pasos = [
+    { t: 'Pago', ayuda: '¿Qué vas a pagar?', html: `
+      <div class="campo-f"><label for="f-pn">Nombre</label><input id="f-pn" type="text" name="nombre" required value="${esc(p.nombre)}" placeholder="Ej.: Arriendo" autocomplete="off"></div>
+      ${id ? '' : sugerencias('f-pn', SUGERENCIAS_PAGO.map(([n]) => n))}
+      <div class="campo-f"><span class="lbl">Categoría</span>${chipsCategoria('pago', 'categoria_id', p.categoria_id)}</div>` },
+    { t: 'Valor', ayuda: '¿Cuánto pagas y cada cuánto?', html: `
+      <div class="campo-f"><label for="f-valor">Valor</label>
+        <div class="input-pesos"><span>$</span><input id="f-valor" type="number" name="valor" min="0" step="any" inputmode="decimal" value="${p.valor ?? ''}" placeholder="0" ${variable ? 'disabled' : ''}></div>
+        <label class="toggle" style="margin-top:8px"><input type="checkbox" name="variable" data-cambio="valor-variable" ${variable ? 'checked' : ''}><span>El valor cambia cada vez</span></label></div>
+      <div class="campo-f"><span class="lbl">Frecuencia</span><div class="seg" data-seg="frecuencia">${Object.entries(FRECUENCIAS).map(([k, [t]]) => `<button type="button" class="${p.frecuencia === k ? 'on' : ''}" data-v="${k}">${t}</button>`).join('')}</div><input type="hidden" name="frecuencia" value="${esc(p.frecuencia)}"></div>` },
+    { t: 'Fecha', ayuda: '¿Cuándo vence el próximo pago?', html: `
+      <div class="campo-f"><label for="f-prox">Próxima fecha de pago</label><input id="f-prox" type="date" name="proxima_fecha" required value="${esc(p.proxima_fecha)}">
+        <div class="sugerencias">${[5, 10, 15, 20, 30].map((n) => `<button type="button" class="chip" data-act="fecha-rapida" data-campo="f-prox" data-v="dia${n}">Día ${n}</button>`).join('')}<button type="button" class="chip" data-act="fecha-rapida" data-campo="f-prox" data-v="hoy">Hoy</button></div></div>
+      <div class="campo-f"><label for="f-notas">Notas</label><textarea id="f-notas" name="notas" placeholder="Ej.: referencia de pago, cuenta, dónde se paga…">${esc(p.notas || '')}</textarea></div>
+      ${hist.length ? `<div class="grupo-t">Historial de pagos</div><div class="filas">${hist.map((x) => `<div class="fila"><div class="cuerpo" style="cursor:default"><div class="t">Pagado el ${fmtFecha(isoDe(new Date(x.pagado_en)))}</div><div class="meta">Vencía el ${fmtFecha(x.fecha_vencimiento)}</div></div><div class="derecha monto">${x.valor != null ? dinero(x.valor) : ''}</div></div>`).join('')}</div>` : ''}` },
+  ];
   abrirSheet(`${cabezaSheet(id ? 'Editar pago' : 'Nuevo pago')}
-  <form data-form="pago" data-id="${id || ''}">
-    <div class="campo-f"><label for="f-pn">Nombre</label><input id="f-pn" type="text" name="nombre" required value="${esc(p.nombre)}" placeholder="Ej.: Arriendo" autocomplete="off"></div>
-    <div class="fila-f">
-      <div class="campo-f"><label for="f-valor">Valor</label><input id="f-valor" type="number" name="valor" min="0" step="any" inputmode="decimal" value="${p.valor ?? ''}" placeholder="Variable"><span class="ayuda">Vacío = valor variable</span></div>
-      <div class="campo-f"><label for="f-frec">Frecuencia</label><select id="f-frec" name="frecuencia">${Object.entries(FRECUENCIAS).map(([k, [t]]) => `<option value="${k}" ${p.frecuencia === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-    </div>
-    <div class="fila-f">
-      <div class="campo-f"><label for="f-prox">Próxima fecha de pago</label><input id="f-prox" type="date" name="proxima_fecha" required value="${esc(p.proxima_fecha)}"></div>
-      <div class="campo-f"><label for="f-pago">Categoría</label>${selectCategoria('pago', 'categoria_id', p.categoria_id, 'Sin categoría')}</div>
-    </div>
-    <div class="campo-f"><label for="f-notas">Notas</label><textarea id="f-notas" name="notas" placeholder="Ej.: referencia de pago, cuenta, dónde se paga…">${esc(p.notas || '')}</textarea></div>
-    ${hist.length ? `<div class="grupo-t">Historial de pagos</div><div class="filas">${hist.map((x) => `<div class="fila"><div class="cuerpo" style="cursor:default"><div class="t">Pagado el ${fmtFecha(isoDe(new Date(x.pagado_en)))}</div><div class="meta">Vencía el ${fmtFecha(x.fecha_vencimiento)}</div></div><div class="derecha monto">${x.valor != null ? dinero(x.valor) : ''}</div></div>`).join('')}</div>` : ''}
-    <div class="acciones">
-      ${id ? `<button type="button" class="btn peligro" data-act="borrar-pago" data-id="${id}">${ic('basura')}Borrar</button>` : ''}
-      <span class="espacio"></span>
-      <button type="button" class="btn" data-act="cerrar">Cancelar</button>
-      <button class="btn primario">${ic('check')}Guardar</button>
-    </div>
-  </form>`);
+  <form data-form="pago" data-id="${id || ''}">${wizard(pasos, id ? { borrar: `<button type="button" class="btn peligro" data-act="borrar-pago" data-id="${id}">${ic('basura')}</button>` } : null)}</form>`);
+  prepararWizard();
 }
 
 // =====================================================================
@@ -871,39 +1008,100 @@ function filaDocumento(d, mostrarCarpeta) {
     <span style="color:var(--muted)">${ic('derecha')}</span></div>`;
 }
 
+const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+function docsFiltrados() {
+  const nq = normalizar(ui.busqueda.trim());
+  if (!nq) return db.documentos.slice();
+  return db.documentos.filter((d) => [d.nombre, d.numero, d.persona, d.notas, (cat(d.carpeta_id) || {}).nombre].some((v) => normalizar(v).includes(nq)));
+}
+const estadoDoc = (d) => {
+  if (!d.fecha_vencimiento) return 'sin';
+  const dd = diasEntre(hoyISO(), d.fecha_vencimiento);
+  return dd < 0 ? 'vencido' : dd <= 30 ? 'pronto' : 'aldia';
+};
+const ESTADOS_DOC = [['vencido', 'Vencidos', 'rojo'], ['pronto', 'Por vencer (30 días)', 'naranja'], ['aldia', 'Al día', 'verde'], ['sin', 'Sin vencimiento', '']];
+
 function vistaBaul() {
-  const q = ui.busqueda.trim().toLowerCase();
   const porVencer = docsPorVencer(30);
   const vencidos = porVencer.filter((d) => d.fecha_vencimiento < hoyISO()).length;
-  const sinCarpeta = db.documentos.filter((d) => !d.carpeta_id || !cat(d.carpeta_id));
-  let contenido;
-  if (q) {
-    const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const nq = norm(q);
-    const res = db.documentos.filter((d) => [d.nombre, d.numero, d.persona, d.notas, (cat(d.carpeta_id) || {}).nombre].some((v) => norm(v).includes(nq)))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre));
-    contenido = `<section class="card">${res.length ? `<div class="filas">${res.map((d) => filaDocumento(d, true)).join('')}</div>` : `<div class="vacio">${ic('buscar')}Ningún documento coincide con “${esc(ui.busqueda)}”.</div>`}</section>`;
-  } else {
-    contenido = `
-    <button type="button" class="card venc-card" data-act="ir" data-v="vencimientos">
-      <span class="ic">${ic('alerta')}</span>
-      <span class="cuerpo"><div class="t">Vencimientos</div><div class="s">${porVencer.length ? `${plural(porVencer.length, 'documento vence', 'documentos vencen')} en los próximos 30 días${vencidos ? ` · ${vencidos} ya ${vencidos === 1 ? 'vencido' : 'vencidos'}` : ''}` : 'Todo al día en los próximos 30 días'}</div></span>
-      <span style="color:var(--muted)">${ic('derecha')}</span>
-    </button>
-    <div class="carpetas">
-      ${cats('carpeta').map((c) => {
-        const n = db.documentos.filter((d) => d.carpeta_id === c.id).length;
-        return `<button type="button" class="carpeta" data-act="ir" data-v="carpeta" data-p="${c.id}"><span class="ic ${colorCarpeta(c)}">${ic(c.icono || 'carpeta')}</span><span class="n">${esc(c.nombre)}</span><span class="c">${plural(n, 'documento', 'documentos')}</span></button>`;
-      }).join('')}
-      ${sinCarpeta.length ? `<button type="button" class="carpeta" data-act="ir" data-v="carpeta" data-p="sin"><span class="ic c5">${ic('carpeta')}</span><span class="n">Sin carpeta</span><span class="c">${plural(sinCarpeta.length, 'documento', 'documentos')}</span></button>` : ''}
-      <button type="button" class="carpeta nueva" data-act="nueva-categoria" data-tipo="carpeta">${ic('mas')}Nueva carpeta</button>
-    </div>`;
-  }
+  const vistas = [['carpetas', 'Carpetas', 'carpeta'], ['lista', 'Lista', 'lista'], ['kanban', 'Kanban', 'kanban']];
+  const cuerpo = ui.vistaDocs === 'lista' ? docsLista() : ui.vistaDocs === 'kanban' ? docsKanban() : docsCarpetas();
   return `
   <div class="cabeza"><div class="txt"><h1>Baúl de documentos</h1><p>${plural(db.documentos.length, 'documento guardado', 'documentos guardados')}</p></div>
-    <button type="button" class="btn primario" data-act="nuevo-doc">${ic('mas')}Agregar documento</button></div>
+    <button type="button" class="btn" data-act="informe" data-v="documentos" aria-label="Descargar informe">${ic('descargar')}<span class="solo-pc">Informe</span></button>
+    <button type="button" class="btn primario" data-act="nuevo-doc">${ic('mas')}Agregar</button></div>
+  <button type="button" class="card venc-card" data-act="ir" data-v="vencimientos">
+    <span class="ic">${ic('alerta')}</span>
+    <span class="cuerpo"><div class="t">Vencimientos</div><div class="s">${porVencer.length ? `${plural(porVencer.length, 'documento vence', 'documentos vencen')} en los próximos 30 días${vencidos ? ` · ${vencidos} ya ${vencidos === 1 ? 'vencido' : 'vencidos'}` : ''}` : 'Todo al día en los próximos 30 días'}</div></span>
+    <span style="color:var(--muted)">${ic('derecha')}</span>
+  </button>
+  <div class="vistas" role="tablist">${vistas.map(([k, t, i]) => `<button type="button" role="tab" aria-selected="${ui.vistaDocs === k}" class="${ui.vistaDocs === k ? 'on' : ''}" data-act="vista-docs" data-v="${k}">${ic(i)}<span>${t}</span></button>`).join('')}</div>
   <div class="buscador">${ic('buscar')}<input type="search" id="busqueda" placeholder="Buscar por nombre, número, persona…" value="${esc(ui.busqueda)}" aria-label="Buscar documentos" autocomplete="off"></div>
-  ${contenido}`;
+  <div class="anim-entrada">${cuerpo}</div>`;
+}
+
+function docsCarpetas() {
+  if (ui.busqueda.trim()) {
+    const res = docsFiltrados().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return `<section class="card">${res.length ? `<div class="filas">${res.map((d) => filaDocumento(d, true)).join('')}</div>` : `<div class="vacio">${ic('buscar')}Ningún documento coincide con “${esc(ui.busqueda)}”.</div>`}</section>`;
+  }
+  const sinCarpeta = db.documentos.filter((d) => !d.carpeta_id || !cat(d.carpeta_id));
+  return `<div class="carpetas">
+    ${cats('carpeta').map((c) => {
+      const n = db.documentos.filter((d) => d.carpeta_id === c.id).length;
+      return `<button type="button" class="carpeta" data-act="ir" data-v="carpeta" data-p="${c.id}"><span class="ic ${colorCarpeta(c)}">${ic(c.icono || 'carpeta')}</span><span class="n">${esc(c.nombre)}</span><span class="c">${plural(n, 'documento', 'documentos')}</span></button>`;
+    }).join('')}
+    ${sinCarpeta.length ? `<button type="button" class="carpeta" data-act="ir" data-v="carpeta" data-p="sin"><span class="ic c5">${ic('carpeta')}</span><span class="n">Sin carpeta</span><span class="c">${plural(sinCarpeta.length, 'documento', 'documentos')}</span></button>` : ''}
+    <button type="button" class="carpeta nueva" data-act="nueva-categoria" data-tipo="carpeta">${ic('mas')}Nueva carpeta</button>
+  </div>`;
+}
+
+function docsLista() {
+  let docs = docsFiltrados();
+  if (ui.carpetaFiltro) docs = docs.filter((d) => (ui.carpetaFiltro === 'sin' ? !d.carpeta_id || !cat(d.carpeta_id) : d.carpeta_id === ui.carpetaFiltro));
+  docs.sort(ui.ordenDocs === 'az' ? (a, b) => a.nombre.localeCompare(b.nombre)
+    : (a, b) => (a.fecha_vencimiento || '9999').localeCompare(b.fecha_vencimiento || '9999') || a.nombre.localeCompare(b.nombre));
+  return `
+  <div class="barra-filtros">
+    <label class="pill-select">${ic('carpeta')}<select data-cambio="carpeta-filtro" aria-label="Filtrar por carpeta">
+      <option value="">Todas las carpetas</option>
+      ${cats('carpeta').map((c) => `<option value="${c.id}" ${ui.carpetaFiltro === c.id ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('')}
+      <option value="sin" ${ui.carpetaFiltro === 'sin' ? 'selected' : ''}>Sin carpeta</option></select></label>
+    <div class="seg mini">${[['vence', 'Vence primero'], ['az', 'A–Z']].map(([k, t]) => `<button type="button" class="${ui.ordenDocs === k ? 'on' : ''}" data-act="orden-docs" data-v="${k}">${t}</button>`).join('')}</div>
+  </div>
+  <section class="card">${docs.length ? `<div class="filas">${docs.map((d) => filaDocumento(d, true)).join('')}</div>` : `<div class="vacio">${ic('archivo')}No hay documentos aquí.</div>`}</section>`;
+}
+
+function tarjetaKanban(d, arrastrable) {
+  const e = d.fecha_vencimiento ? estadoFecha(d.fecha_vencimiento, 30) : null;
+  const c = d.carpeta_id && cat(d.carpeta_id);
+  return `<article class="kcard" ${arrastrable ? 'draggable="true"' : ''} data-doc="${d.id}" data-act="ir" data-v="documento" data-p="${d.id}">
+    <div class="kt">${esc(d.nombre)}</div>
+    <div class="kmeta">${ui.kanbanPor === 'estado' && c ? `<span>${ic(c.icono || 'carpeta')}${esc(c.nombre)}</span>` : ''}${d.persona ? `<span>${ic('persona')}${esc(d.persona)}</span>` : ''}${d.archivos && d.archivos.length ? `<span>${ic('archivo')}${d.archivos.length}</span>` : ''}</div>
+    ${e ? `<span class="badge ${e.cls || 'verde'}">${e.cls ? esc(e.txt) : 'Vence ' + esc(e.txt)}</span>` : ''}
+  </article>`;
+}
+
+function docsKanban() {
+  const docs = docsFiltrados().sort((a, b) => (a.fecha_vencimiento || '9999').localeCompare(b.fecha_vencimiento || '9999'));
+  let columnas;
+  if (ui.kanbanPor === 'estado') {
+    columnas = ESTADOS_DOC.map(([k, t, cls]) => ({ id: k, t, cls, docs: docs.filter((d) => estadoDoc(d) === k) }));
+  } else {
+    columnas = cats('carpeta').map((c) => ({ id: c.id, t: c.nombre, icono: c.icono, color: colorCarpeta(c), docs: docs.filter((d) => d.carpeta_id === c.id) }));
+    const sin = docs.filter((d) => !d.carpeta_id || !cat(d.carpeta_id));
+    if (sin.length) columnas.push({ id: '', t: 'Sin carpeta', icono: 'carpeta', color: 'c5', docs: sin });
+  }
+  const porCarpeta = ui.kanbanPor === 'carpeta';
+  return `
+  <div class="barra-filtros"><span class="lbl-mini">Agrupar por</span>
+    <div class="seg mini">${[['carpeta', 'Carpeta'], ['estado', 'Vencimiento']].map(([k, t]) => `<button type="button" class="${ui.kanbanPor === k ? 'on' : ''}" data-act="kanban-por" data-v="${k}">${t}</button>`).join('')}</div>
+    ${porCarpeta ? '<span class="lbl-mini solo-pc">Arrastra una tarjeta para cambiarla de carpeta</span>' : ''}</div>
+  <div class="kanban">${columnas.map((col) => `<section class="kcol ${col.cls ? 'k-' + col.cls : ''}" ${porCarpeta ? `data-col="${col.id}"` : ''}>
+      <header>${porCarpeta ? `<span class="kic ${col.color}">${ic(col.icono || 'carpeta')}</span>` : `<i class="kpunto"></i>`}<h3>${esc(col.t)}</h3><span class="kn">${col.docs.length}</span></header>
+      <div class="kcards">${col.docs.map((d) => tarjetaKanban(d, porCarpeta)).join('') || '<div class="kvacio">Sin documentos</div>'}</div>
+      ${porCarpeta ? `<button type="button" class="kadd" data-act="nuevo-doc" data-carpeta="${col.id}">${ic('mas')}Agregar</button>` : ''}
+    </section>`).join('')}</div>`;
 }
 
 function vistaCarpeta(id) {
@@ -952,31 +1150,39 @@ function vistaDocumento(id) {
   </section>`;
 }
 
+const SUGERENCIAS_DOC = [['SOAT', 'Vehículos'], ['Tecnomecánica', 'Vehículos'], ['Tarjeta de propiedad', 'Vehículos'], ['Licencia de conducción', 'Vehículos'],
+  ['Cédula', 'Personales'], ['Pasaporte', 'Personales'], ['Registro civil', 'Familia'], ['Póliza de seguro', 'Importantes'], ['Contrato', 'Importantes'], ['Escritura', 'Importantes']];
+
 function formDocumento(id, carpetaId) {
   const d = id ? db.documentos.find((x) => x.id === id) : { nombre: '', carpeta_id: carpetaId || null, persona: '', numero: '', fecha_expedicion: '', fecha_vencimiento: '', notas: '' };
-  const personas = [...new Set(db.documentos.map((x) => x.persona).filter(Boolean))].sort();
+  const personas = [...new Set(['Yo', ...db.documentos.map((x) => x.persona).filter(Boolean)])].slice(0, 8);
+  const pasos = [
+    { t: 'Documento', ayuda: '¿Qué documento vas a guardar?', html: `
+      <div class="campo-f"><label for="f-dn">Nombre</label><input id="f-dn" type="text" name="nombre" required value="${esc(d.nombre)}" placeholder="Ej.: SOAT, Pasaporte…" autocomplete="off"></div>
+      ${id ? '' : sugerencias('f-dn', SUGERENCIAS_DOC.map(([n]) => n))}
+      <div class="campo-f"><span class="lbl">Carpeta</span>${chipsCategoria('carpeta', 'carpeta_id', d.carpeta_id)}</div>` },
+    { t: 'Detalles', ayuda: '¿De quién es y qué número tiene? Puedes dejarlo vacío.', html: `
+      <div class="campo-f"><label for="f-per">Pertenece a</label><input id="f-per" type="text" name="persona" value="${esc(d.persona || '')}" placeholder="Ej.: Yo, esposa, hijo" autocomplete="off"></div>
+      ${sugerencias('f-per', personas)}
+      <div class="campo-f"><label for="f-num">Número del documento</label><input id="f-num" type="text" name="numero" value="${esc(d.numero || '')}" autocomplete="off"></div>` },
+    { t: 'Fechas', ayuda: 'Con la fecha de vencimiento te avisamos antes de que se venza.', html: `
+      <div class="campo-f"><label for="f-exp">Fecha de expedición</label><input id="f-exp" type="date" name="fecha_expedicion" value="${esc(d.fecha_expedicion || '')}">
+        <div class="sugerencias"><button type="button" class="chip" data-act="fecha-rapida" data-campo="f-exp" data-v="hoy">Hoy</button></div></div>
+      <div class="campo-f"><label for="f-ven">Fecha de vencimiento</label><input id="f-ven" type="date" name="fecha_vencimiento" value="${esc(d.fecha_vencimiento || '')}">
+        <div class="sugerencias">${[['1a', '1 año después'], ['5a', '5 años'], ['10a', '10 años'], ['no', 'No vence']].map(([k, t]) => `<button type="button" class="chip" data-act="fecha-rapida" data-campo="f-ven" data-v="${k}">${t}</button>`).join('')}</div></div>` },
+    { t: id ? 'Notas' : 'Archivos', ayuda: id ? 'Algo que quieras recordar de este documento.' : 'Sube el PDF o tómale una foto. También puedes hacerlo después.', html: `
+      ${id ? '' : `<label class="subir subir-grande">${ic('subir')}<span id="sel-archivos">Elegir PDF o fotos</span><input type="file" name="archivos" accept="application/pdf,image/*" multiple></label>`}
+      <div class="campo-f" style="margin-top:14px"><label for="f-dnotas">Notas</label><textarea id="f-dnotas" name="notas" placeholder="Opcional">${esc(d.notas || '')}</textarea></div>` },
+  ];
   abrirSheet(`${cabezaSheet(id ? 'Editar documento' : 'Agregar documento')}
-  <form data-form="documento" data-id="${id || ''}">
-    <div class="campo-f"><label for="f-dn">Nombre</label><input id="f-dn" type="text" name="nombre" required value="${esc(d.nombre)}" placeholder="Ej.: SOAT, Pasaporte, Póliza de salud" autocomplete="off"></div>
-    <div class="fila-f">
-      <div class="campo-f"><label for="f-carpeta">Carpeta</label>${selectCategoria('carpeta', 'carpeta_id', d.carpeta_id, 'Sin carpeta')}</div>
-      <div class="campo-f"><label for="f-per">Pertenece a</label><input id="f-per" type="text" name="persona" list="dl-personas" value="${esc(d.persona || '')}" placeholder="Ej.: Yo, esposa, hijo" autocomplete="off"></div>
-    </div>
-    <datalist id="dl-personas">${personas.map((p) => `<option value="${esc(p)}">`).join('')}</datalist>
-    <div class="campo-f"><label for="f-num">Número del documento</label><input id="f-num" type="text" name="numero" value="${esc(d.numero || '')}" autocomplete="off"></div>
-    <div class="fila-f">
-      <div class="campo-f"><label for="f-exp">Fecha de expedición</label><input id="f-exp" type="date" name="fecha_expedicion" value="${esc(d.fecha_expedicion || '')}"></div>
-      <div class="campo-f"><label for="f-ven">Fecha de vencimiento</label><input id="f-ven" type="date" name="fecha_vencimiento" value="${esc(d.fecha_vencimiento || '')}"><span class="ayuda">Vacía si no vence</span></div>
-    </div>
-    <div class="campo-f"><label for="f-dnotas">Notas</label><textarea id="f-dnotas" name="notas">${esc(d.notas || '')}</textarea></div>
-    ${id ? '' : `<div class="campo-f"><span class="lbl">Archivos</span><label class="subir" style="margin-top:0">${ic('subir')}<span id="sel-archivos">Elegir PDF o fotos</span><input type="file" name="archivos" accept="application/pdf,image/*" multiple></label></div>`}
-    <div class="acciones">
-      ${id ? `<button type="button" class="btn peligro" data-act="borrar-doc" data-id="${id}">${ic('basura')}Borrar</button>` : ''}
-      <span class="espacio"></span>
-      <button type="button" class="btn" data-act="cerrar">Cancelar</button>
-      <button class="btn primario">${ic('check')}Guardar</button>
-    </div>
-  </form>`);
+  <form data-form="documento" data-id="${id || ''}">${wizard(pasos, id ? { borrar: `<button type="button" class="btn peligro" data-act="borrar-doc" data-id="${id}">${ic('basura')}</button>` } : null)}</form>`);
+  prepararWizard();
+}
+function prepararWizard() {
+  const w = $('#sheet .wiz');
+  if (!w) return;
+  w.classList.add('primero');
+  if (Number(w.dataset.total) === 1) w.classList.add('ultimo');
 }
 
 async function subirArchivos(docId, files) {
@@ -1047,6 +1253,124 @@ function filaVencimientoPago(p) {
 }
 
 // =====================================================================
+// INFORMES EN PDF
+// =====================================================================
+let pdfListo = null;
+function cargarPDF() {
+  if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API.autoTable) return Promise.resolve();
+  if (pdfListo) return pdfListo;
+  const cargar = (src) => new Promise((ok, mal) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = mal; document.head.appendChild(s); });
+  pdfListo = cargar('vendor/jspdf.umd.min.js').then(() => cargar('vendor/jspdf.plugin.autotable.min.js')).catch((e) => { pdfListo = null; throw e; });
+  return pdfListo;
+}
+// La fuente del PDF no tiene emojis: se quitan para que no salgan símbolos raros
+const pdfTxt = (s) => String(s ?? '').replace(/[^\x00-\xFF]/g, '').trim();
+
+async function generarInforme(tipo) {
+  toast('Preparando informe…');
+  try { await cargarPDF(); } catch (e) { toast('No se pudo preparar el PDF. Revisa tu conexión.', true); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const h = hoyISO();
+  const titulos = { habitos: 'Informe de hábitos', tareas: 'Informe de tareas', documentos: 'Informe de documentos', pagos: 'Informe de pagos' };
+  const ancho = doc.internal.pageSize.getWidth();
+  const VERDE = [20, 196, 127]; const GRAFITO = [17, 18, 20]; const GRIS = [91, 96, 104];
+  // Encabezado de marca
+  doc.setFillColor(...GRAFITO); doc.rect(0, 0, ancho, 26, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(255, 255, 255); doc.text('APG', 14, 16);
+  doc.setTextColor(46, 229, 157); doc.text('VIDA', 14 + doc.getTextWidth('APG '), 16);
+  doc.setFontSize(10); doc.setTextColor(200, 203, 206); doc.setFont('helvetica', 'normal');
+  doc.text(pdfTxt(mayus(new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))), ancho - 14, 16, { align: 'right' });
+  doc.setTextColor(...GRAFITO); doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
+  doc.text(titulos[tipo], 14, 40);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...GRIS);
+  if (Cuenta.nombre()) doc.text(pdfTxt(Cuenta.nombre()), 14, 46);
+  let y = 54;
+  const estilos = { theme: 'grid', styles: { font: 'helvetica', fontSize: 9, cellPadding: 2.5, lineColor: [226, 228, 229], textColor: GRAFITO }, headStyles: { fillColor: GRAFITO, textColor: 255, fontStyle: 'bold' }, alternateRowStyles: { fillColor: [246, 247, 247] }, margin: { left: 14, right: 14 } };
+  const resumen = (pares) => {
+    const w = (ancho - 28 - (pares.length - 1) * 4) / pares.length;
+    pares.forEach(([v, l], i) => {
+      const x = 14 + i * (w + 4);
+      doc.setFillColor(241, 242, 242); doc.roundedRect(x, y, w, 18, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(...GRAFITO); doc.text(pdfTxt(v), x + 4, y + 8);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GRIS); doc.text(pdfTxt(l), x + 4, y + 14);
+    });
+    y += 26;
+  };
+  const tabla = (titulo, head, body, extra = {}) => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...GRAFITO); doc.text(titulo, 14, y); y += 3;
+    doc.autoTable({ ...estilos, startY: y, head: [head], body: body.length ? body.map((r) => r.map(pdfTxt)) : [[{ content: 'Sin datos', colSpan: head.length, styles: { halign: 'center', textColor: GRIS } }]], ...extra });
+    y = doc.lastAutoTable.finalY + 10;
+  };
+  const colorEstado = (col) => ({ didParseCell: (d) => {
+    if (d.section !== 'body' || d.column.index !== col) return;
+    const t = String(d.cell.raw || '');
+    if (/Venci/.test(t)) d.cell.styles.textColor = [200, 55, 45];
+    else if (/^(Hoy|Mañana|En \d)/.test(t)) d.cell.styles.textColor = [168, 82, 12];
+    else if (/Al día/.test(t)) d.cell.styles.textColor = [11, 138, 86];
+  } });
+
+  if (tipo === 'habitos') {
+    const habs = habitosOrden();
+    const ini = h.slice(0, 8) + '01';
+    const diasMes = diasEntre(ini, h) + 1;
+    const hoyHechos = habs.filter((x) => registro(x.id, h)).length;
+    const filas = habs.map((x) => {
+      const r = rachas(x.id);
+      const mes = [...r.fechas].filter((f) => f >= ini && f <= h).length;
+      return [x.nombre, MOMENTOS.find(([k]) => k === (x.momento || ''))[1], String(r.actual), String(r.mejor), `${mes}/${diasMes}`, Math.round((mes / diasMes) * 100) + '%', x.meta_dias ? `${r.total}/${x.meta_dias}` : '-'];
+    });
+    const prom = filas.length ? Math.round(filas.reduce((s, f) => s + parseInt(f[5], 10), 0) / filas.length) : 0;
+    resumen([[`${hoyHechos}/${habs.length}`, 'Cumplidos hoy'], [prom + '%', 'Promedio del mes'], [String(Math.max(0, ...habs.map((x) => rachas(x.id).actual))), 'Mejor racha activa']]);
+    tabla('Resumen del mes', ['Hábito', 'Momento', 'Racha', 'Mejor racha', 'Días del mes', '% mes', 'Meta'], filas);
+    const dias = Array.from({ length: 7 }, (_, i) => sumarDias(h, i - 6));
+    tabla('Últimos 7 días', ['Hábito', ...dias.map((f) => `${LETRAS[aFecha(f).getDay()]} ${aFecha(f).getDate()}`)],
+      habs.map((x) => [x.nombre, ...dias.map((f) => (registro(x.id, f) ? 'Sí' : '-'))]),
+      { didParseCell: (d) => { if (d.section === 'body' && d.column.index > 0) { d.cell.styles.halign = 'center'; if (d.cell.raw === 'Sí') { d.cell.styles.fillColor = [226, 246, 236]; d.cell.styles.textColor = [11, 138, 86]; d.cell.styles.fontStyle = 'bold'; } } } });
+  }
+  if (tipo === 'tareas') {
+    const pend = ordenarTareas(db.tareas.filter((t) => !t.hecha));
+    const hace30 = sumarDias(h, -30);
+    const hechas = db.tareas.filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) >= hace30).sort((a, b) => b.hecha_en.localeCompare(a.hecha_en));
+    resumen([[String(pend.length), 'Pendientes'], [String(pend.filter((t) => t.fecha && t.fecha < h).length), 'Atrasadas'], [String(hechas.length), 'Hechas (30 días)']]);
+    tabla('Pendientes', ['Tarea', 'Fecha', 'Lista', 'Matriz', 'Prioridad', 'Repetir'],
+      pend.map((t) => [t.titulo, t.fecha ? fechaCorta(t.fecha) + (t.fecha < h ? ' (atrasada)' : '') : '-', (cat(t.lista_id) || {}).nombre || '-', nombreCuadro(cuadroDe(t)), t.prioridad ? mayus(t.prioridad) : '-', t.repetir ? NOMBRE_REPETIR[t.repetir] : '-']),
+      { didParseCell: (d) => { if (d.section === 'body' && d.column.index === 1 && /atrasada/.test(d.cell.raw)) d.cell.styles.textColor = [200, 55, 45]; } });
+    tabla('Completadas en los últimos 30 días', ['Tarea', 'Completada', 'Lista'], hechas.map((t) => [t.titulo, fmtFecha(isoDe(new Date(t.hecha_en)), true), (cat(t.lista_id) || {}).nombre || '-']));
+  }
+  if (tipo === 'documentos') {
+    const docs = db.documentos.slice().sort((a, b) => (a.fecha_vencimiento || '9999').localeCompare(b.fecha_vencimiento || '9999'));
+    const conteo = (k) => docs.filter((d) => estadoDoc(d) === k).length;
+    resumen([[String(docs.length), 'Documentos'], [String(conteo('vencido')), 'Vencidos'], [String(conteo('pronto')), 'Vencen en 30 días']]);
+    tabla('Documentos', ['Documento', 'Carpeta', 'Pertenece a', 'Número', 'Expedición', 'Vencimiento', 'Estado'],
+      docs.map((d) => [d.nombre, (cat(d.carpeta_id) || {}).nombre || '-', d.persona || '-', d.numero || '-', d.fecha_expedicion ? fmtFecha(d.fecha_expedicion, true) : '-',
+        d.fecha_vencimiento ? fmtFecha(d.fecha_vencimiento, true) : 'No vence', d.fecha_vencimiento ? (estadoDoc(d) === 'aldia' ? 'Al día' : estadoFecha(d.fecha_vencimiento, 30).txt) : '-']), colorEstado(6));
+  }
+  if (tipo === 'pagos') {
+    const pagos = db.pagos.slice().sort((a, b) => a.proxima_fecha.localeCompare(b.proxima_fecha));
+    const [ini, fin] = rangoPeriodo('mes');
+    const delMes = pagos.filter((p) => p.proxima_fecha <= fin);
+    const pagadosMes = db.pago_historial.filter((x) => { const f = isoDe(new Date(x.pagado_en)); return f >= ini && f <= fin; });
+    resumen([[dinero(delMes.reduce((s, p) => s + (Number(p.valor) || 0), 0)), 'Por pagar este mes'], [dinero(pagadosMes.reduce((s, x) => s + (Number(x.valor) || 0), 0)), 'Pagado este mes'], [String(pagos.filter((p) => p.proxima_fecha < h).length), 'Vencidos']]);
+    tabla('Pagos recurrentes', ['Pago', 'Categoría', 'Frecuencia', 'Próximo pago', 'Valor', 'Estado'],
+      pagos.map((p) => { const e = estadoFecha(p.proxima_fecha, 3); return [p.nombre, (cat(p.categoria_id) || {}).nombre || '-', FRECUENCIAS[p.frecuencia][0], fmtFecha(p.proxima_fecha, true), p.valor != null ? dinero(p.valor) : 'Variable', e.cls ? e.txt : 'Al día']; }),
+      { ...colorEstado(5), columnStyles: { 4: { halign: 'right' } } });
+    tabla('Pagado este mes', ['Pago', 'Vencía', 'Pagado el', 'Valor'],
+      pagadosMes.map((x) => [(db.pagos.find((p) => p.id === x.pago_id) || {}).nombre || '-', fmtFecha(x.fecha_vencimiento, true), fmtFecha(isoDe(new Date(x.pagado_en)), true), x.valor != null ? dinero(x.valor) : '-']),
+      { columnStyles: { 3: { halign: 'right' } } });
+  }
+  // Pie con número de página
+  const paginas = doc.getNumberOfPages();
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i); doc.setFontSize(8); doc.setTextColor(...GRIS);
+    doc.text(`APG VIDA · ${titulos[tipo]}`, 14, doc.internal.pageSize.getHeight() - 8);
+    doc.text(`Página ${i} de ${paginas}`, ancho - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+  }
+  doc.save(`APG-VIDA-${tipo}-${h}.pdf`);
+  toast('Informe descargado');
+}
+
+// =====================================================================
 // AJUSTES Y CATEGORÍAS
 // =====================================================================
 const TIPOS = { lista: ['Listas de tareas', 'lista', 'Nueva lista'], pago: ['Categorías de pagos', 'categoría', 'Nueva categoría'], carpeta: ['Carpetas del baúl', 'carpeta', 'Nueva carpeta'] };
@@ -1058,6 +1382,10 @@ function vistaAjustes() {
   <section class="card">
     <div class="card-h"><span class="ic">${ic('persona')}</span><h2>Tu nombre</h2></div>
     <form class="rapido" data-form="nombre" style="margin:0"><input type="text" name="nombre" value="${esc(Cuenta.nombre())}" placeholder="¿Cómo te saludamos?" autocomplete="given-name" aria-label="Tu nombre"><button class="btn primario">Guardar</button></form>
+  </section>
+  <section class="card">
+    <div class="card-h"><span class="ic">${ic('inicio')}</span><h2>Estilo del Inicio</h2></div>
+    <div class="seg">${[['a', 'Tarjetas de colores'], ['b', 'Progreso del día'], ['c', 'Agenda']].map(([k, t]) => `<button type="button" class="${(Cuenta.ajuste('estiloInicio') || 'a') === k ? 'on' : ''}" data-act="estilo-inicio" data-v="${k}">${t}</button>`).join('')}</div>
   </section>
   <section class="card">
     <div class="card-h"><span class="ic">${ic('lista')}</span><h2>Organización</h2></div>
@@ -1160,6 +1488,57 @@ const ACCIONES = {
       setTimeout(() => toggleHabito(el.dataset.id, el.dataset.fecha), 280);
     } else toggleHabito(el.dataset.id, el.dataset.fecha);
   },
+  'estilo-inicio': async (el) => { try { await Cuenta.guardarAjuste('estiloInicio', el.dataset.v); render(); toast('Estilo guardado'); } catch (e) { avisarError(e); } },
+  informe: (el) => generarInforme(el.dataset.v),
+  'res-pagos': (el) => { ui.resPagos = el.dataset.v; render(); },
+  'vista-docs': (el) => { ui.vistaDocs = el.dataset.v; localStorage.setItem('apgvida-vista-docs', ui.vistaDocs); render(); },
+  'orden-docs': (el) => { ui.ordenDocs = el.dataset.v; render(); },
+  'kanban-por': (el) => { ui.kanbanPor = el.dataset.v; render(); },
+  'wiz-sig': (el) => { const w = el.closest('.wiz'); moverWizard(w, Number(w.dataset.paso) + 1); },
+  'wiz-atras': (el) => { const w = el.closest('.wiz'); moverWizard(w, Number(w.dataset.paso) - 1); },
+  'wiz-ir': (el) => {
+    const w = el.closest('.wiz'); const i = Number(el.dataset.i);
+    // Se puede volver a cualquier paso; para adelantar hay que ir validando
+    if (i < Number(w.dataset.paso) || w.dataset.editando === '1') moverWizard(w, i);
+    else for (let k = Number(w.dataset.paso) + 1; k <= i; k++) { moverWizard(w, k); if (Number(w.dataset.paso) !== k) break; }
+  },
+  sugerir: (el) => {
+    const campo = $('#' + el.dataset.campo);
+    campo.value = el.dataset.v;
+    el.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === el));
+    // Si el nombre sugiere una carpeta o categoría, la deja elegida
+    const pista = (SUGERENCIAS_DOC.find(([n]) => n === el.dataset.v) || SUGERENCIAS_PAGO.find(([n]) => n === el.dataset.v) || [])[1];
+    if (pista) {
+      const seg = el.closest('form').querySelector('[data-seg="carpeta_id"], [data-seg="categoria_id"]');
+      const b = seg && [...seg.querySelectorAll('button[data-v]')].find((x) => normalizar(x.textContent).includes(normalizar(pista)));
+      if (b) b.click();
+    }
+  },
+  'fecha-rapida': (el) => {
+    const campo = $('#' + el.dataset.campo); const v = el.dataset.v; const h = hoyISO();
+    if (v === 'hoy') campo.value = h;
+    else if (v === 'no') campo.value = '';
+    else if (/^\d+a$/.test(v)) campo.value = sumarMeses(($('#f-exp') && $('#f-exp').value) || h, 12 * parseInt(v, 10));
+    else if (/^dia\d+$/.test(v)) {
+      const dia = parseInt(v.slice(3), 10);
+      const [y, m, d] = h.split('-').map(Number);
+      const ultimo = (yy, mm) => new Date(yy, mm, 0).getDate();
+      let f = isoDe(new Date(y, m - 1, Math.min(dia, ultimo(y, m))));
+      if (f < h) f = isoDe(new Date(y, m, Math.min(dia, ultimo(y, m + 1))));
+      campo.value = f;
+    }
+    el.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === el));
+  },
+  'nueva-cat-inline': async (el) => {
+    const tipo = el.dataset.tipo;
+    const nombre = (window.prompt(`Nombre de la ${TIPOS[tipo][1]} nueva:`) || '').trim();
+    if (!nombre) return;
+    try {
+      const c = await Datos.crear('categorias', { tipo, nombre, icono: tipo === 'carpeta' ? 'carpeta' : tipo === 'pago' ? 'dinero' : 'lista', orden: cats(tipo).length });
+      el.insertAdjacentHTML('beforebegin', `<button type="button" data-v="${c.id}">${ic(c.icono)}${esc(c.nombre)}</button>`);
+      el.previousElementSibling.click();
+    } catch (e) { /* ya avisado */ }
+  },
   'vista-hab': (el) => { ui.vistaHab = el.dataset.v; localStorage.setItem('apgvida-vista-hab', ui.vistaHab); render(); },
   'dia-hab': (el) => { ui.diaHab = el.dataset.v; render(); },
   'semana-hab': (el) => { ui.semanaHab = Math.min(0, ui.semanaHab + Number(el.dataset.v)); render(); },
@@ -1242,7 +1621,38 @@ document.addEventListener('click', (ev) => {
   if (fn) { ev.preventDefault(); fn(el, ev); }
 });
 
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('#sheet').classList.contains('on')) cerrarSheet(); });
+document.addEventListener('keydown', (ev) => {
+  // En los formularios por pasos, Enter pasa al siguiente paso en vez de guardar
+  if (ev.key === 'Enter' && ev.target.tagName === 'INPUT') {
+    const w = ev.target.closest('.wiz');
+    if (w && !w.classList.contains('ultimo')) { ev.preventDefault(); moverWizard(w, Number(w.dataset.paso) + 1); return; }
+  } if (ev.key === 'Escape' && $('#sheet').classList.contains('on')) cerrarSheet(); });
+
+// Kanban: arrastrar una tarjeta a otra carpeta (computador)
+document.addEventListener('dragstart', (ev) => {
+  const c = ev.target.closest && ev.target.closest('.kcard[draggable]');
+  if (!c) return;
+  ev.dataTransfer.setData('text/plain', c.dataset.doc); ev.dataTransfer.effectAllowed = 'move';
+  c.classList.add('arrastrando');
+});
+document.addEventListener('dragend', (ev) => { const c = ev.target.closest && ev.target.closest('.kcard'); if (c) c.classList.remove('arrastrando'); document.querySelectorAll('.kcol.sobre').forEach((x) => x.classList.remove('sobre')); });
+document.addEventListener('dragover', (ev) => {
+  const col = ev.target.closest && ev.target.closest('.kcol[data-col]');
+  if (!col) return;
+  ev.preventDefault();
+  document.querySelectorAll('.kcol.sobre').forEach((x) => { if (x !== col) x.classList.remove('sobre'); });
+  col.classList.add('sobre');
+});
+document.addEventListener('drop', async (ev) => {
+  const col = ev.target.closest && ev.target.closest('.kcol[data-col]');
+  if (!col) return;
+  ev.preventDefault(); col.classList.remove('sobre');
+  const id = ev.dataTransfer.getData('text/plain');
+  const d = db.documentos.find((x) => x.id === id);
+  const destino = col.dataset.col || null;
+  if (!d || (d.carpeta_id || null) === destino) return;
+  try { await Datos.editar('documentos', id, { carpeta_id: destino }); toast(`Movido a ${destino ? cat(destino).nombre : 'Sin carpeta'}`); } catch (e) { /* ya avisado */ }
+});
 
 document.addEventListener('input', (ev) => {
   if (ev.target.id === 'busqueda') { ui.busqueda = ev.target.value; render(); }
@@ -1262,6 +1672,9 @@ document.addEventListener('change', async (ev) => {
     } catch (e) { t.value = ''; }
     return;
   }
+  if (t.dataset.cambio === 'carpeta-filtro') { ui.carpetaFiltro = t.value; render(); return; }
+  if (t.dataset.cambio === 'valor-variable') { const v = $('#f-valor'); v.disabled = t.checked; if (t.checked) v.value = ''; return; }
+  if (t.dataset.cambio === 'cat-pagos') { ui.catPagos = t.value || null; render(); return; }
   if (t.dataset.subir) { const files = t.files; await subirArchivos(t.dataset.subir, files); t.value = ''; return; }
   if (t.name === 'archivos' && t.type === 'file') {
     const n = t.files.length;
@@ -1323,7 +1736,7 @@ const FORMULARIOS = {
   pago: async (f, datos) => {
     const valor = datos.get('valor');
     const v = {
-      nombre: datos.get('nombre').trim(), valor: valor === '' ? null : Number(valor), frecuencia: datos.get('frecuencia'),
+      nombre: datos.get('nombre').trim(), valor: datos.get('variable') === 'on' || valor == null || valor === '' ? null : Number(valor), frecuencia: datos.get('frecuencia') || 'mensual',
       proxima_fecha: datos.get('proxima_fecha'), categoria_id: vacioANull(datos.get('categoria_id')), notas: vacioANull(datos.get('notas').trim()),
     };
     cerrarSheet();
