@@ -425,3 +425,129 @@ textarea { min-height: 84px; resize: vertical; }
 .toggle span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; font-weight: 700; font-size: 14px; color: var(--muted); background: var(--surface); transition: all .15s; }
 .toggle input:checked + span { background: var(--grafito); border-color: var(--grafito); color: #fff; }
 .toggle input:focus-visible + span { outline: 2px solid var(--verde); }
+
+/* ===================== Hábitos (nuevo) ===================== */
+.anillo { --p: 0; --t: 44px; --g: 5px; --c: var(--verde); width: var(--t); height: var(--t); border-radius: 50%; flex: none; display: inline-block;
+  background: conic-gradient(var(--c) calc(var(--p) * 1%), #E4E6E6 0); transition: background .4s;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--g)), #000 calc(100% - var(--g) + 1px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - var(--g)), #000 calc(100% - var(--g) + 1px)); }
+
+/* Tira de días */
+.tira-dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 12px; }
+.tira-dias .dia { border: 0; background: none; border-radius: 16px; padding: 6px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--muted); transition: background .2s, color .2s; }
+.tira-dias .dn { font-size: 11px; font-weight: 700; text-transform: capitalize; }
+.tira-dias .dnum { position: relative; width: 38px; height: 38px; display: grid; place-items: center; }
+.tira-dias .dnum .anillo { position: absolute; inset: 0; }
+.tira-dias .dnum b { font-family: var(--f-titulo); font-size: 14px; color: var(--grafito); position: relative; }
+.tira-dias .dia.hoy .dn { color: var(--verde-ink); }
+.tira-dias .dia.sel { background: var(--grafito); color: #B8BBBF; }
+.tira-dias .dia.sel .dnum b { color: #fff; }
+.tira-dias .dia.sel .anillo { background: conic-gradient(var(--c) calc(var(--p) * 1%), #3A3D42 0); }
+
+/* Progreso del día */
+.progreso-dia, .meta-card { margin-bottom: 14px; } .progreso-dia, .meta-card { display: flex; align-items: center; gap: 16px; }
+.pd-num { font-family: var(--f-titulo); font-weight: 800; font-size: 28px; line-height: 1; }
+.pd-num small { font-size: 15px; color: var(--muted); font-weight: 700; }
+.pd-msg { color: var(--muted); font-weight: 700; margin-top: 4px; }
+
+/* Grupos Mañana / Tarde / Noche */
+.grupo-hab { padding: 6px 14px 8px; }
+.grupo-hab-h { display: flex; align-items: center; gap: 8px; padding: 10px 2px 6px; width: 100%; border: 0; background: none; text-align: left; color: var(--muted); }
+.grupo-hab-h h2 { flex: 1; font-size: 15px; font-weight: 800; color: var(--grafito); }
+.grupo-hab-h > span { font-weight: 700; font-size: 13px; }
+.grupo-hab-h svg.i { width: 18px; height: 18px; }
+.grupo-hab-h svg.flecha { transform: rotate(90deg); }
+.completados.cerrado svg.flecha { transform: none; }
+.completados .grupo-hab-h svg.i:first-child { color: var(--verde); }
+
+.hab-fila { display: flex; align-items: center; gap: 12px; padding: 10px 2px; border-top: 1px solid var(--line-soft); transition: opacity .28s, transform .28s; }
+.hab-lista .hab-fila:first-child { border-top: 0; }
+.hab-fila.saliendo { opacity: 0; transform: translateX(28px); }
+.hab-ico { width: 46px; height: 46px; border-radius: 50%; border: 0; flex: none; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 16%, #fff); }
+.hab-ico svg.i { width: 22px; height: 22px; }
+.hab-ico.grande { width: 52px; height: 52px; }
+.hab-fila .cuerpo { flex: 1; min-width: 0; cursor: pointer; }
+.hab-fila .nombre { font-family: var(--f-titulo); font-weight: 700; font-size: 15px; }
+.hab-fila.on .nombre { color: var(--muted); }
+.hab-meta { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 12px; color: var(--muted); font-weight: 700; }
+.hab-meta .racha { font-size: 12px; }
+.hab-meta .racha svg.i { width: 13px; height: 13px; }
+.barra { flex: 1; max-width: 120px; height: 5px; border-radius: 5px; background: #E4E6E6; overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--c); border-radius: 5px; transition: width .4s; }
+.hab-check { width: 40px; height: 40px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--c) 45%, #fff); background: var(--surface); color: transparent; flex: none; display: grid; place-items: center; transition: background .2s, border-color .2s, color .2s, transform .2s; }
+.hab-check svg.i { width: 20px; height: 20px; stroke-width: 3; }
+.hab-check:hover { border-color: var(--c); }
+.hab-check.on { background: var(--c); border-color: var(--c); color: #fff; }
+.hab-check.pop { animation: pop .3s ease-out; }
+@keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+/* Hábitos en Inicio con su color */
+.hab-mini { --c: var(--verde); }
+.hab-mini .bola { color: var(--c); }
+.hab-mini.on { background: color-mix(in srgb, var(--c) 12%, #fff); border-color: color-mix(in srgb, var(--c) 30%, #fff); color: var(--grafito); }
+.hab-mini.on .bola { background: var(--c); border-color: var(--c); color: #fff; }
+
+/* Semana: cuadrícula hábitos × días */
+.semana-grid { display: flex; flex-direction: column; gap: 6px; }
+.sem-fila { --c: var(--verde); display: grid; grid-template-columns: minmax(92px, 1.6fr) repeat(7, minmax(26px, 1fr)) 34px; gap: 5px; align-items: center; }
+.sem-fila.cab span { text-align: center; font-size: 11px; font-weight: 800; color: var(--muted); display: flex; flex-direction: column; line-height: 1.2; }
+.sem-fila.cab span small { font-weight: 700; font-size: 10px; }
+.sem-fila.cab span.hoy { color: var(--verde-ink); }
+.sem-fila.pie span { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); }
+.sem-fila.pie .n { text-align: left; }
+.sem-nombre { border: 0; background: none; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 0; text-align: left; }
+.sem-nombre .n { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini-ico { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 16%, #fff); flex: none; }
+.mini-ico svg.i { width: 14px; height: 14px; }
+.celda { aspect-ratio: 1; border: 0; border-radius: 8px; background: #ECEEEE; padding: 0; transition: background .2s, transform .15s; max-height: 40px; }
+.celda.on { background: var(--c); }
+.celda.hoy { box-shadow: inset 0 0 0 2px var(--grafito); }
+.celda:disabled { opacity: .35; cursor: default; }
+.celda:not(:disabled):active { transform: scale(.88); }
+.sem-total { font-size: 12px; font-weight: 800; color: var(--muted); text-align: right; }
+@media (max-width: 560px) {
+  .sem-fila { grid-template-columns: repeat(7, 1fr) 30px; row-gap: 4px; }
+  .sem-nombre, .sem-fila.pie .n { grid-column: 1 / -1; }
+  .sem-fila.cab .esp { display: none; }
+  .semana-grid { gap: 10px; }
+  .celda { max-height: 34px; }
+}
+.ayuda-txt { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
+
+/* Mes: un mini calendario por hábito */
+.mes-grid { display: grid; gap: 10px; margin-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mes-grid > * { min-width: 0; }
+.mes-grid > .card + .card { margin-top: 0; }
+@media (max-width: 330px) { .mes-grid { grid-template-columns: 1fr; } }
+@media (min-width: 1000px) { .mes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mes-hab { --c: var(--verde); padding: 12px; }
+@media (max-width: 640px) { .mes-hab-h .anillo { display: none; } .mes-hab-h .n { font-size: 13px; } .mes-hab-h b { min-width: 0; } }
+.mes-hab-h { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 0 0 10px; text-align: left; }
+.mes-hab-h .n { flex: 1; font-family: var(--f-titulo); font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mes-hab-h b { font-family: var(--f-titulo); font-size: 13px; min-width: 38px; text-align: right; }
+.mini-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.mini-cal .mdn { font-size: 9px; font-weight: 800; color: var(--muted); text-align: center; }
+.mini-cal button, .mini-cal .v { aspect-ratio: 1; border-radius: 4px; border: 0; padding: 0; background: #ECEEEE; }
+.mini-cal .v { background: none; }
+.mini-cal button.on { background: var(--c); }
+.mini-cal button.hoy { box-shadow: inset 0 0 0 2px var(--grafito); }
+.mini-cal button:disabled { opacity: .35; }
+.mes-hab-pie { font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 8px; }
+
+/* Detalle del hábito con su color */
+.hab-det-cab { align-items: center; }
+.cal-hab .cal button.on { background: var(--c); border-color: var(--c); }
+
+/* Formulario: colores y meta */
+.colores { display: flex; flex-wrap: wrap; gap: 10px; }
+.colores button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px var(--line); padding: 0; }
+.colores button.on { box-shadow: 0 0 0 2px var(--grafito); }
+.iconos-hab button.on { background: var(--c); border-color: var(--c); color: #fff; }
+.meta-fila { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.meta-fila input { width: 110px; flex: none; }
+
+/* Confeti */
+.confeti { position: fixed; inset: 0; pointer-events: none; z-index: 95; overflow: hidden; }
+.confeti i { position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px; animation: caer 1.4s ease-in forwards; }
+@keyframes caer { to { top: 105vh; transform: translateX(40px) rotate(540deg); opacity: .7; } }
+@media (prefers-reduced-motion: reduce) { .hab-fila, .hab-check, .anillo, .barra i { transition: none; } .hab-check.pop { animation: none; } }

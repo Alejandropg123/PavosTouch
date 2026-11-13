@@ -227,7 +227,11 @@ function filasBase() {
   Object.entries(CATEGORIAS_BASE).forEach(([tipo, lista]) => lista.forEach(([nombre, icono], orden) => {
     categorias.push({ id: uid(), tipo, nombre, icono, orden, created_at: ts(i++) });
   }));
-  const habitos = HABITOS_BASE.map(([nombre, icono, es_ejercicio], orden) => ({ id: uid(), nombre, icono, es_ejercicio, orden, created_at: ts(i++) }));
+  const extra = { sueno: ['noche', 30, '#6A4BC4'], libro: ['tarde', 30, '#3F74D8'], agua: ['manana', 100, '#1F9FB0'], ejercicio: ['noche', 30, '#E05BA8'], meditar: ['noche', 30, '#7A5CE0'] };
+  const habitos = HABITOS_BASE.map(([nombre, icono, es_ejercicio], orden) => {
+    const [momento, meta_dias, color] = extra[icono] || [null, null, null];
+    return { id: uid(), nombre, icono, es_ejercicio, orden, momento, meta_dias, color, created_at: ts(i++) };
+  });
   return { categorias, habitos };
 }
 
