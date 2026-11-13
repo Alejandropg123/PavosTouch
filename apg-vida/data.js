@@ -151,7 +151,11 @@ const Archivos = {
 // ---------- Cuenta ----------
 const Cuenta = {
   async iniciar() {
-    if (!REMOTO) { sesion.user = { id: 'demo', email: 'demo', user_metadata: { nombre: localStorage.getItem('apgvida-nombre') || '' } }; return true; }
+    if (!REMOTO) {
+      const ajustes = JSON.parse(localStorage.getItem('apgvida-ajustes') || '{}');
+      sesion.user = { id: 'demo', email: 'demo', user_metadata: { ...ajustes, nombre: localStorage.getItem('apgvida-nombre') || '' } };
+      return true;
+    }
     const { data } = await sb.auth.getSession();
     sesion.user = data.session ? data.session.user : null;
     sb.auth.onAuthStateChange((evento, s) => {
@@ -185,6 +189,18 @@ const Cuenta = {
   async cambiarNombre(nombre) {
     if (!REMOTO) { localStorage.setItem('apgvida-nombre', nombre); sesion.user.user_metadata.nombre = nombre; return; }
     const { data, error } = await sb.auth.updateUser({ data: { nombre } });
+    if (error) throw error;
+    sesion.user = data.user;
+  },
+  // Preferencias pequeñas del usuario (ej. nombres de los cuadros de la matriz)
+  ajuste(clave) { return sesion.user && sesion.user.user_metadata ? sesion.user.user_metadata[clave] : undefined; },
+  async guardarAjuste(clave, valor) {
+    if (!REMOTO) {
+      const a = JSON.parse(localStorage.getItem('apgvida-ajustes') || '{}');
+      a[clave] = valor; localStorage.setItem('apgvida-ajustes', JSON.stringify(a));
+      sesion.user.user_metadata[clave] = valor; return;
+    }
+    const { data, error } = await sb.auth.updateUser({ data: { [clave]: valor } });
     if (error) throw error;
     sesion.user = data.user;
   },
@@ -241,14 +257,15 @@ function datosDemo() {
   });
   habito_registros.push({ id: uid(), habito_id: habitos[0].id, fecha: h, detalle: null, created_at: new Date().toISOString() });
   habito_registros.push({ id: uid(), habito_id: habitos[2].id, fecha: h, detalle: null, created_at: new Date().toISOString() });
-  const t = (titulo, fecha, prioridad, lista, repetir) => ({ id: uid(), titulo, fecha, prioridad, lista_id: lista && cat('lista', lista), repetir: repetir || null, hecha: false, hecha_en: null, created_at: new Date().toISOString() });
+  const t = (titulo, fecha, prioridad, lista, repetir, urgente = false, importante = false) => ({ id: uid(), titulo, fecha, prioridad, lista_id: lista && cat('lista', lista), repetir: repetir || null, urgente, importante, hecha: false, hecha_en: null, created_at: new Date().toISOString() });
   const p = (nombre, frecuencia, proxima_fecha, valor, categoria) => ({ id: uid(), nombre, frecuencia, proxima_fecha, valor, categoria_id: cat('pago', categoria), notas: null, created_at: new Date().toISOString() });
   const doc = (nombre, carpeta, persona, numero, exp, venc) => ({ id: uid(), nombre, carpeta_id: cat('carpeta', carpeta), persona, numero, fecha_expedicion: exp, fecha_vencimiento: venc, notas: null, archivos: [], created_at: new Date().toISOString() });
   return {
     categorias, habitos, habito_registros,
     tareas: [
-      t('Llamar al banco por el extracto', d(-1), 'alta', 'Personal'),
-      t('Revisar propuesta del cliente', h, 'media', 'Trabajo'),
+      t('Llamar al banco por el extracto', d(-1), 'alta', 'Personal', null, true, true),
+      t('Revisar propuesta del cliente', h, 'media', 'Trabajo', null, false, true),
+      t('Responder correo del contador', d(1), null, 'Trabajo', null, true, false),
       t('Comprar mercado de la semana', h, null, 'Casa', 'semanal'),
       t('Agendar cita médica', d(2), 'baja', 'Personal'),
       t('Organizar el garaje', null, null, 'Casa'),

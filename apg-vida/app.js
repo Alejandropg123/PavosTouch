@@ -44,6 +44,7 @@ const ICONOS = {
   escudo: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
   dinero: '<circle cx="12" cy="12" r="9"/><path d="M15 9a3 3 0 0 0-3-1.5c-1.7 0-3 .9-3 2.2 0 3 6 1.6 6 4.6 0 1.3-1.3 2.2-3 2.2A3.2 3.2 0 0 1 9 15M12 6v1.5M12 16.5V18"/>',
   lista: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  matriz: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
   pulso: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
   externo: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
 };
@@ -85,7 +86,7 @@ const habitosOrden = () => db.habitos.slice().sort((a, b) => a.orden - b.orden |
 const registro = (habId, fecha) => db.habito_registros.find((r) => r.habito_id === habId && r.fecha === fecha);
 
 // ---------- Estado de la interfaz ----------
-const ui = { filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos' };
+const ui = { vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos' };
 const ocupado = new Set();   // evita dobles toques mientras se guarda
 
 // ---------- Toast ----------
@@ -165,7 +166,7 @@ function render() {
   const activo = document.activeElement && document.activeElement.id;
   view.innerHTML = fn(param);
   if (activo === 'busqueda') { const b = $('#busqueda'); b.focus(); b.setSelectionRange(b.value.length, b.value.length); }
-  const clave = vista + '/' + param;
+  const clave = vista + '/' + param + (vista === 'tareas' ? '/' + ui.vistaTareas : '');
   if (clave !== rutaAnterior) { window.scrollTo(0, 0); rutaAnterior = clave; }
 }
 
@@ -214,7 +215,7 @@ function vistaInicio() {
     <section class="card">
       <div class="card-h"><span class="ic">${ic('tareas')}</span><h2>Tareas del día</h2><button type="button" class="link" data-act="ir" data-v="tareas">Ver todas ${ic('derecha')}</button></div>
       <form class="rapido" data-form="tarea-rapida" data-fecha="${h}"><input type="text" name="titulo" placeholder="Agregar tarea para hoy…" autocomplete="off" aria-label="Nueva tarea"><button class="btn primario" aria-label="Agregar">${ic('mas')}</button></form>
-      ${tareas.length ? `<div class="filas">${tareas.slice(0, 7).map(filaTarea).join('')}</div>` : `<div class="vacio">${ic('check')}Nada pendiente para hoy.</div>`}
+      ${tareas.length ? `<div class="filas">${tareas.slice(0, 7).map((t) => filaTarea(t)).join('')}</div>` : `<div class="vacio">${ic('check')}Nada pendiente para hoy.</div>`}
       ${tareas.length > 7 ? `<button type="button" class="link" data-act="ir" data-v="tareas">y ${tareas.length - 7} más ${ic('derecha')}</button>` : ''}
     </section>
     <section class="card">
@@ -245,21 +246,55 @@ function ordenarTareas(lista) {
 }
 const NOMBRE_REPETIR = { diaria: 'Cada día', semanal: 'Cada semana', mensual: 'Cada mes' };
 
-function filaTarea(t) {
+const COLORES_LISTA = ['#6A4BC4', '#2F6BC4', '#0B8A56', '#C4385B', '#A8520C', '#1F7F8C', '#7A5C00', '#5B6068'];
+const colorLista = (id) => COLORES_LISTA[Math.max(0, cats('lista').findIndex((c) => c.id === id)) % COLORES_LISTA.length];
+
+// Matriz de Eisenhower: urgente × importante
+const CUADROS = [
+  { k: 'q1', n: 'I', urgente: true, importante: true, def: 'Urgente e importante', ayuda: 'Hazlo ya' },
+  { k: 'q2', n: 'II', urgente: false, importante: true, def: 'Importante, no urgente', ayuda: 'Planéalo' },
+  { k: 'q3', n: 'III', urgente: true, importante: false, def: 'Urgente, no importante', ayuda: 'Delégalo o hazlo rápido' },
+  { k: 'q4', n: 'IV', urgente: false, importante: false, def: 'Ni urgente ni importante', ayuda: 'Bandeja' },
+];
+const nombreCuadro = (q) => ((Cuenta.ajuste('cuadros') || {})[q.k] || q.def);
+const cuadroDe = (t) => CUADROS.find((q) => q.urgente === !!t.urgente && q.importante === !!t.importante);
+
+function filaTarea(t, compacta) {
   const h = hoyISO();
   const l = t.lista_id && cat(t.lista_id);
   const meta = [];
   if (t.fecha) meta.push(`<span class="${!t.hecha && t.fecha < h ? 'txt-rojo' : ''}">${ic('calendario')}${fechaCorta(t.fecha)}</span>`);
-  if (t.prioridad) meta.push(`<span>${ic('bandera')}${t.prioridad[0].toUpperCase() + t.prioridad.slice(1)}</span>`);
-  if (l) meta.push(`<span>${ic(l.icono || 'lista')}${esc(l.nombre)}</span>`);
-  if (t.repetir) meta.push(`<span>${ic('repetir')}${NOMBRE_REPETIR[t.repetir]}</span>`);
-  return `<div class="fila ${t.hecha ? 'hecha' : ''}">
+  if (!compacta) {
+    if (t.urgente || t.importante) { const q = cuadroDe(t); meta.push(`<span class="q-tag ${q.k}">${q.n}</span>`); }
+    if (t.prioridad) meta.push(`<span>${ic('bandera')}${t.prioridad[0].toUpperCase() + t.prioridad.slice(1)}</span>`);
+    if (l) meta.push(`<span><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</span>`);
+  }
+  if (t.repetir) meta.push(`<span>${ic('repetir')}${compacta ? '' : NOMBRE_REPETIR[t.repetir]}</span>`);
+  return `<div class="fila ${t.hecha ? 'hecha' : ''} ${compacta ? 'compacta' : ''}" data-fila="${t.id}">
     <button type="button" class="check ${t.hecha ? 'on' : ''} ${!t.hecha && t.prioridad ? 'p-' + t.prioridad : ''}" data-act="toggle-tarea" data-id="${t.id}" aria-label="${t.hecha ? 'Marcar como pendiente' : 'Marcar como hecha'}">${ic('check')}</button>
     <div class="cuerpo" data-act="editar-tarea" data-id="${t.id}"><div class="t">${esc(t.titulo)}</div>${meta.length ? `<div class="meta">${meta.join('')}</div>` : ''}</div>
   </div>`;
 }
 
+const VISTAS_TAREAS = [['lista', 'Lista', 'lista'], ['calendario', 'Calendario', 'calendario'], ['matriz', 'Matriz', 'matriz']];
+
 function vistaTareas() {
+  const pend = db.tareas.filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
+  const listas = cats('lista');
+  const cuerpo = ui.vistaTareas === 'calendario' ? tareasCalendario() : ui.vistaTareas === 'matriz' ? tareasMatriz() : tareasLista();
+  return `
+  <div class="cabeza"><div class="txt"><h1>Tareas</h1><p>${plural(pend.length, 'pendiente', 'pendientes')}</p></div>
+    <button type="button" class="btn primario" data-act="nueva-tarea">${ic('mas')}Nueva tarea</button></div>
+  <div class="vistas" role="tablist">${VISTAS_TAREAS.map(([k, t, i]) => `<button type="button" role="tab" aria-selected="${ui.vistaTareas === k}" class="${ui.vistaTareas === k ? 'on' : ''}" data-act="vista-tareas" data-v="${k}">${ic(i)}<span>${t}</span></button>`).join('')}</div>
+  <div class="listas-fila">
+    <button type="button" class="pill ${!ui.listaTareas ? 'on' : ''}" data-act="lista-tareas" data-v="">Todas</button>
+    ${listas.map((l) => `<button type="button" class="pill ${ui.listaTareas === l.id ? 'on' : ''}" data-act="lista-tareas" data-v="${l.id}"><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</button>`).join('')}
+    <button type="button" class="pill icono" data-act="gestor" data-tipo="lista" aria-label="Editar listas">${ic('editar')}</button>
+  </div>
+  <div class="anim-entrada" data-anim="${ui.vistaTareas}">${cuerpo}</div>`;
+}
+
+function tareasLista() {
   const h = hoyISO();
   const pend = db.tareas.filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
   const filtros = {
@@ -272,26 +307,23 @@ function vistaTareas() {
   ordenarTareas(lista);
   const hechas = db.tareas.filter((t) => t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas))
     .sort((a, b) => (b.hecha_en || '').localeCompare(a.hecha_en || ''));
-  const listas = cats('lista');
 
   let cuerpo;
   if (!lista.length) cuerpo = `<div class="vacio">${ic('check')}${ui.filtroTareas === 'hoy' ? 'Nada pendiente para hoy.' : 'No hay tareas aquí.'}</div>`;
   else if (ui.filtroTareas === 'hoy') {
     const vencidas = lista.filter((t) => t.fecha < h);
     const deHoy = lista.filter((t) => t.fecha === h);
-    cuerpo = (vencidas.length ? `<div class="grupo-t">Atrasadas</div><div class="filas">${vencidas.map(filaTarea).join('')}</div>` : '')
-      + (deHoy.length ? `<div class="grupo-t">Hoy</div><div class="filas">${deHoy.map(filaTarea).join('')}</div>` : '');
-  } else cuerpo = `<div class="filas">${lista.map(filaTarea).join('')}</div>`;
+    cuerpo = (vencidas.length ? `<div class="grupo-t">Atrasadas</div><div class="filas">${vencidas.map((t) => filaTarea(t)).join('')}</div>` : '')
+      + (deHoy.length ? `<div class="grupo-t">Hoy</div><div class="filas">${deHoy.map((t) => filaTarea(t)).join('')}</div>` : '');
+  } else if (ui.filtroTareas === 'proximas') {
+    // Agrupadas por día para leerlas de un vistazo
+    const dias = [...new Set(lista.map((t) => t.fecha))];
+    cuerpo = dias.map((f) => `<div class="grupo-t">${esc(mayus(fechaCorta(f) === fmtFecha(f) ? aFecha(f).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' }).replace('.', '') : fechaCorta(f)))}</div>
+      <div class="filas">${lista.filter((t) => t.fecha === f).map((t) => filaTarea(t)).join('')}</div>`).join('');
+  } else cuerpo = `<div class="filas">${lista.map((t) => filaTarea(t)).join('')}</div>`;
 
   return `
-  <div class="cabeza"><div class="txt"><h1>Tareas</h1><p>${plural(pend.length, 'pendiente', 'pendientes')}</p></div>
-    <button type="button" class="btn primario" data-act="nueva-tarea">${ic('mas')}Nueva tarea</button></div>
-  <div class="chips">${Object.entries(filtros).map(([k, [t, l]]) => `<button type="button" class="chip ${ui.filtroTareas === k ? 'on' : ''}" data-act="filtro-tareas" data-v="${k}">${t}<span class="n">${l.length}</span></button>`).join('')}</div>
-  <div class="chips">
-    <button type="button" class="chip ${!ui.listaTareas ? 'on' : ''}" data-act="lista-tareas" data-v="">Todas las listas</button>
-    ${listas.map((l) => `<button type="button" class="chip ${ui.listaTareas === l.id ? 'on' : ''}" data-act="lista-tareas" data-v="${l.id}">${esc(l.nombre)}</button>`).join('')}
-    <button type="button" class="chip" data-act="gestor" data-tipo="lista">${ic('editar')} Listas</button>
-  </div>
+  <div class="tabs">${Object.entries(filtros).map(([k, [t, l]]) => `<button type="button" class="${ui.filtroTareas === k ? 'on' : ''}" data-act="filtro-tareas" data-v="${k}">${t}${l.length ? `<span class="n">${l.length}</span>` : ''}</button>`).join('')}</div>
   <section class="card">
     <form class="rapido" data-form="tarea-rapida" data-fecha="${ui.filtroTareas === 'hoy' ? h : ''}">
       <input type="text" name="titulo" placeholder="${ui.filtroTareas === 'hoy' ? 'Agregar tarea para hoy…' : 'Agregar tarea…'}" autocomplete="off" aria-label="Nueva tarea">
@@ -302,9 +334,76 @@ function vistaTareas() {
   ${hechas.length ? `<section class="card">
     <div class="card-h"><h2>Completadas</h2><span class="cuenta">${hechas.length}</span>
       <button type="button" class="link" data-act="ver-hechas">${ui.verHechas ? 'Ocultar' : 'Mostrar'}</button></div>
-    ${ui.verHechas ? `<div class="filas">${hechas.slice(0, 50).map(filaTarea).join('')}</div>
+    ${ui.verHechas ? `<div class="filas">${hechas.slice(0, 50).map((t) => filaTarea(t)).join('')}</div>
       <div class="acciones"><button type="button" class="btn chico peligro" data-act="borrar-hechas">${ic('basura')}Borrar completadas</button></div>` : ''}
   </section>` : ''}`;
+}
+
+function tareasCalendario() {
+  const h = hoyISO();
+  const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + ui.mesTareas);
+  const y = base.getFullYear(); const m = base.getMonth();
+  const diasMes = new Date(y, m + 1, 0).getDate();
+  const offset = (new Date(y, m, 1).getDay() + 6) % 7;
+  const delFiltro = db.tareas.filter((t) => t.fecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
+  const porDia = {};
+  delFiltro.forEach((t) => { (porDia[t.fecha] = porDia[t.fecha] || []).push(t); });
+  const sel = ui.diaTareas || h;
+  const celdas = Array.from({ length: offset }, () => '<span class="vacia"></span>').join('')
+    + Array.from({ length: diasMes }, (_, i) => {
+      const f = isoDe(new Date(y, m, i + 1));
+      const ts = porDia[f] || [];
+      const pend = ts.filter((t) => !t.hecha);
+      const atrasada = f < h && pend.length;
+      const puntos = pend.slice(0, 3).map((t) => `<i style="background:${t.lista_id ? colorLista(t.lista_id) : 'var(--muted)'}"></i>`).join('');
+      return `<button type="button" class="${f === sel ? 'sel' : ''} ${f === h ? 'hoy' : ''} ${atrasada ? 'atrasada' : ''}" data-act="dia-tareas" data-v="${f}" aria-label="${fmtFecha(f, true)}${pend.length ? ', ' + plural(pend.length, 'tarea', 'tareas') : ''}">
+        <span class="num">${i + 1}</span><span class="puntos">${puntos}${pend.length > 3 ? '<b>+</b>' : ''}</span></button>`;
+    }).join('');
+  const delDia = ordenarTareas((porDia[sel] || []).slice()).sort((a, b) => a.hecha - b.hecha);
+  const titulo = mayus(aFecha(sel).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }));
+  return `
+  <section class="card cal-tareas">
+    <div class="cal-h">
+      <button type="button" class="icono-btn" data-act="mes-tareas" data-v="-1" aria-label="Mes anterior">${ic('izquierda')}</button>
+      <h2>${mayus(base.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).replace(' de ', ' '))}</h2>
+      ${ui.mesTareas !== 0 || sel !== h ? `<button type="button" class="link" data-act="hoy-tareas">Hoy</button>` : ''}
+      <button type="button" class="icono-btn" data-act="mes-tareas" data-v="1" aria-label="Mes siguiente">${ic('derecha')}</button>
+    </div>
+    <div class="cal">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d) => `<span class="dn">${d}</span>`).join('')}${celdas}</div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>${esc(titulo)}</h2><span class="cuenta">${delDia.filter((t) => !t.hecha).length || ''}</span></div>
+    <form class="rapido" data-form="tarea-rapida" data-fecha="${sel}">
+      <input type="text" name="titulo" placeholder="Agregar tarea para este día…" autocomplete="off" aria-label="Nueva tarea">
+      <button class="btn primario" aria-label="Agregar">${ic('mas')}</button>
+    </form>
+    ${delDia.length ? `<div class="filas">${delDia.map((t) => filaTarea(t)).join('')}</div>` : `<div class="vacio">${ic('calendario')}Sin tareas este día.</div>`}
+  </section>`;
+}
+
+function tareasMatriz() {
+  const pend = ordenarTareas(db.tareas.filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas)));
+  return `
+  <div class="matriz-ayuda"><span>Urgente = hay que hacerlo pronto · Importante = te acerca a tus metas</span>
+    <button type="button" class="link" data-act="nombres-cuadros">${ic('editar')} Nombres</button></div>
+  <div class="matriz">${CUADROS.map((q) => {
+    const ts = pend.filter((t) => cuadroDe(t) === q);
+    return `<section class="cuadro ${q.k}">
+      <div class="cuadro-h"><span class="q-num">${q.n}</span><h2>${esc(nombreCuadro(q))}</h2>
+        <button type="button" class="icono-btn" data-act="nueva-tarea-cuadro" data-q="${q.k}" aria-label="Agregar en ${esc(nombreCuadro(q))}">${ic('mas')}</button></div>
+      ${ts.length ? `<div class="filas">${ts.map((t) => filaTarea(t, true)).join('')}</div>` : `<div class="cuadro-vacio">Sin tareas</div>`}
+    </section>`;
+  }).join('')}</div>`;
+}
+
+function formNombresCuadros() {
+  abrirSheet(`${cabezaSheet('Nombres de los cuadros')}
+  <form data-form="cuadros">
+    ${CUADROS.map((q) => `<div class="campo-f"><label for="f-${q.k}"><span class="q-num ${q.k}">${q.n}</span> ${q.urgente ? 'Urgente' : 'No urgente'} · ${q.importante ? 'importante' : 'no importante'}</label>
+      <input id="f-${q.k}" type="text" name="${q.k}" value="${esc(nombreCuadro(q))}" placeholder="${esc(q.def)}" maxlength="40" autocomplete="off"></div>`).join('')}
+    <div class="acciones"><button type="button" class="btn" data-act="cuadros-defecto">Restablecer</button><span class="espacio"></span>
+      <button type="button" class="btn" data-act="cerrar">Cancelar</button><button class="btn primario">${ic('check')}Guardar</button></div>
+  </form>`);
 }
 
 function siguienteFecha(iso, cada) {
@@ -332,12 +431,17 @@ async function toggleTarea(id) {
 }
 
 function formTarea(id, preset = {}) {
-  const t = id ? db.tareas.find((x) => x.id === id) : { titulo: '', fecha: preset.fecha || '', prioridad: null, lista_id: preset.lista_id || null, repetir: null };
+  const t = id ? db.tareas.find((x) => x.id === id) : { titulo: '', fecha: preset.fecha || '', prioridad: null, lista_id: preset.lista_id || null, repetir: null, urgente: !!preset.urgente, importante: !!preset.importante };
   const seg = (name, opciones, val) => `<div class="seg" data-seg="${name}">${opciones.map(([v, txt]) => `<button type="button" class="${(val || '') === v ? 'on' : ''}" data-v="${v}">${txt}</button>`).join('')}</div><input type="hidden" name="${name}" value="${esc(val || '')}">`;
   abrirSheet(`${cabezaSheet(id ? 'Editar tarea' : 'Nueva tarea')}
   <form data-form="tarea" data-id="${id || ''}">
     <div class="campo-f"><label for="f-titulo">Título</label><input id="f-titulo" type="text" name="titulo" required value="${esc(t.titulo)}" autocomplete="off"></div>
     <div class="campo-f"><label for="f-fecha">Fecha</label><input id="f-fecha" type="date" name="fecha" value="${esc(t.fecha || '')}"><span class="ayuda">Opcional. Déjala vacía si no tiene fecha.</span></div>
+    <div class="campo-f"><span class="lbl">Matriz</span>
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" name="urgente" ${t.urgente ? 'checked' : ''}><span>⚡ Urgente</span></label>
+        <label class="toggle"><input type="checkbox" name="importante" ${t.importante ? 'checked' : ''}><span>⭐ Importante</span></label>
+      </div><span class="ayuda">Define en qué cuadro de la matriz aparece.</span></div>
     <div class="campo-f"><span class="lbl">Prioridad</span>${seg('prioridad', [['', 'Ninguna'], ['alta', 'Alta'], ['media', 'Media'], ['baja', 'Baja']], t.prioridad)}</div>
     <div class="campo-f"><label for="f-lista">Lista</label>${selectCategoria('lista', 'lista_id', t.lista_id, 'Sin lista')}</div>
     <div class="campo-f"><span class="lbl">Repetir</span>${seg('repetir', [['', 'No'], ['diaria', 'Cada día'], ['semanal', 'Cada semana'], ['mensual', 'Cada mes']], t.repetir)}
@@ -866,8 +970,29 @@ const ACCIONES = {
   reintentar: () => arrancar(),
   ir: (el) => { cerrarSheet(); if (el.dataset.v === 'habito' && ruta().vista !== 'habito') ui.mesHab = 0; ir(el.dataset.v, el.dataset.p); },
   // Tareas
-  'toggle-tarea': (el) => toggleTarea(el.dataset.id),
-  'nueva-tarea': () => formTarea(null, { fecha: ui.filtroTareas === 'hoy' ? hoyISO() : '', lista_id: ui.listaTareas }),
+  'toggle-tarea': (el) => {
+    // Pequeña animación antes de que la tarea salga de la lista
+    const fila = el.closest('[data-fila]');
+    const t = db.tareas.find((x) => x.id === el.dataset.id);
+    if (fila && t && !t.hecha) { el.classList.add('on'); fila.classList.add('saliendo'); setTimeout(() => toggleTarea(el.dataset.id), 260); }
+    else toggleTarea(el.dataset.id);
+  },
+  'nueva-tarea': () => formTarea(null, {
+    fecha: ui.vistaTareas === 'calendario' ? (ui.diaTareas || hoyISO()) : ui.vistaTareas === 'lista' && ui.filtroTareas === 'hoy' ? hoyISO() : '',
+    lista_id: ui.listaTareas,
+  }),
+  'nueva-tarea-cuadro': (el) => { const q = CUADROS.find((x) => x.k === el.dataset.q); formTarea(null, { lista_id: ui.listaTareas, urgente: q.urgente, importante: q.importante }); },
+  'vista-tareas': (el) => { ui.vistaTareas = el.dataset.v; localStorage.setItem('apgvida-vista-tareas', ui.vistaTareas); render(); },
+  'mes-tareas': (el) => {
+    ui.mesTareas += Number(el.dataset.v);
+    const b = new Date(); b.setDate(1); b.setMonth(b.getMonth() + ui.mesTareas);
+    ui.diaTareas = ui.mesTareas === 0 ? hoyISO() : isoDe(b);
+    render();
+  },
+  'dia-tareas': (el) => { ui.diaTareas = el.dataset.v; render(); },
+  'hoy-tareas': () => { ui.mesTareas = 0; ui.diaTareas = hoyISO(); render(); },
+  'nombres-cuadros': () => formNombresCuadros(),
+  'cuadros-defecto': () => { CUADROS.forEach((q) => { $(`#f-${q.k}`).value = q.def; }); },
   'editar-tarea': (el) => formTarea(el.dataset.id),
   'borrar-tarea': async (el) => { if (!confirmar('¿Borrar esta tarea?')) return; cerrarSheet(); await Datos.borrar('tareas', el.dataset.id); toast('Tarea borrada'); },
   'filtro-tareas': (el) => { ui.filtroTareas = el.dataset.v; render(); },
@@ -990,7 +1115,7 @@ const FORMULARIOS = {
     const titulo = (datos.get('titulo') || '').trim();
     if (!titulo) return;
     f.reset();
-    await Datos.crear('tareas', { titulo, fecha: vacioANull(f.dataset.fecha), prioridad: null, lista_id: ruta().vista === 'tareas' ? ui.listaTareas : null, repetir: null, hecha: false, hecha_en: null });
+    await Datos.crear('tareas', { titulo, fecha: vacioANull(f.dataset.fecha), prioridad: null, lista_id: ruta().vista === 'tareas' ? ui.listaTareas : null, repetir: null, urgente: false, importante: false, hecha: false, hecha_en: null });
     const nuevo = document.querySelector('form[data-form="tarea-rapida"] input');
     if (nuevo) nuevo.focus();
   },
@@ -998,6 +1123,7 @@ const FORMULARIOS = {
     const v = {
       titulo: datos.get('titulo').trim(), fecha: vacioANull(datos.get('fecha')), prioridad: vacioANull(datos.get('prioridad')),
       lista_id: vacioANull(datos.get('lista_id')), repetir: vacioANull(datos.get('repetir')),
+      urgente: datos.get('urgente') === 'on', importante: datos.get('importante') === 'on',
     };
     if (v.repetir && !v.fecha) v.fecha = hoyISO();
     cerrarSheet();
@@ -1009,6 +1135,12 @@ const FORMULARIOS = {
     cerrarSheet();
     if (f.dataset.id) await Datos.editar('habitos', f.dataset.id, v);
     else await Datos.crear('habitos', { ...v, orden: db.habitos.length });
+  },
+  cuadros: async (f, datos) => {
+    const nombres = {};
+    CUADROS.forEach((q) => { const v = (datos.get(q.k) || '').trim(); if (v && v !== q.def) nombres[q.k] = v; });
+    try { await Cuenta.guardarAjuste('cuadros', nombres); cerrarSheet(); render(); toast('Nombres guardados'); }
+    catch (e) { avisarError(e); }
   },
   ejercicio: async (f, datos) => {
     const nombres = datos.getAll('ej_nombre'); const reps = datos.getAll('ej_reps');
