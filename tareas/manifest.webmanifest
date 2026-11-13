@@ -1,0 +1,14 @@
+{
+  "name": "Mis Tareas",
+  "short_name": "Tareas",
+  "description": "Tareas, calendario, matriz de prioridades, hábitos y pomodoro.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F5F7",
+  "theme_color": "#4F6BED",
+  "lang": "es-CO",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
