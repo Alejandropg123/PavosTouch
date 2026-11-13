@@ -863,6 +863,7 @@ const confirmar = (msg) => window.confirm(msg);
 
 const ACCIONES = {
   cerrar: () => cerrarSheet(),
+  reintentar: () => arrancar(),
   ir: (el) => { cerrarSheet(); if (el.dataset.v === 'habito' && ruta().vista !== 'habito') ui.mesHab = 0; ir(el.dataset.v, el.dataset.p); },
   // Tareas
   'toggle-tarea': (el) => toggleTarea(el.dataset.id),
@@ -1153,7 +1154,7 @@ async function arrancar() {
     ultimaCarga = Date.now();
   } catch (e) {
     console.error(e);
-    $('#view').innerHTML = `<div class="vacio">No se pudieron cargar tus datos.<br><button type="button" class="btn" onclick="arrancar()">Reintentar</button></div>`;
+    $('#view').innerHTML = `<div class="vacio">No se pudieron cargar tus datos.<br><button type="button" class="btn" data-act="reintentar">Reintentar</button></div>`;
     return;
   }
   render();
@@ -1171,6 +1172,10 @@ document.addEventListener('visibilitychange', async () => {
 // A medianoche cambia "hoy": refresca la vista si la app quedó abierta.
 let diaActual = hoyISO();
 setInterval(() => { if (hoyISO() !== diaActual) { diaActual = hoyISO(); render(); } }, 60000);
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 
 (async () => {
   if (!REMOTO) $('#demoBanner').hidden = false;

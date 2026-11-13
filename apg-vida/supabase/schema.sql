@@ -117,9 +117,12 @@ begin
 end $$;
 
 -- ---------- Archivos: bucket privado, cada usuario en su propia carpeta ----------
-insert into storage.buckets (id, name, public, file_size_limit)
-values ('documentos', 'documentos', false, 20971520)   -- 20 MB por archivo
-on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit;
+-- 20 MB por archivo; solo PDF e imágenes
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('documentos', 'documentos', false, 20971520,
+        array['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "apg_vida_archivos_dueno" on storage.objects;
 create policy "apg_vida_archivos_dueno" on storage.objects for all to authenticated
