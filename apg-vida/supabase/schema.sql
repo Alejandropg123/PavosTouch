@@ -23,6 +23,8 @@ create table if not exists public.tareas (
   prioridad text check (prioridad in ('alta', 'media', 'baja')),
   lista_id uuid references public.categorias(id) on delete set null,
   repetir text check (repetir in ('diaria', 'semanal', 'mensual')),
+  urgente boolean not null default false,      -- matriz de Eisenhower
+  importante boolean not null default false,
   hecha boolean not null default false,
   hecha_en timestamptz,
   created_at timestamptz not null default now()
@@ -71,7 +73,8 @@ create table if not exists public.pago_historial (
   pago_id uuid not null references public.pagos(id) on delete cascade,
   fecha_vencimiento date not null,
   pagado_en timestamptz not null default now(),
-  valor numeric(14, 2)
+  valor numeric(14, 2),
+  created_at timestamptz not null default now()
 );
 
 -- ---------- Baúl de documentos ----------
