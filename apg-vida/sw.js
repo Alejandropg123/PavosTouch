@@ -1,5 +1,5 @@
 // Guarda la app en el teléfono para que abra rápido y funcione sin señal.
-const CACHE = 'apg-vida-v6';
+const CACHE = 'apg-vida-v7';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'config.js', 'vendor/supabase.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

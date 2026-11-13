@@ -3,11 +3,11 @@
 -- Se puede ejecutar completo en el SQL Editor de un proyecto nuevo.
 
 -- ---------- Categorías creadas por el usuario ----------
--- tipo: 'lista' (listas de tareas), 'pago' (categorías de pagos), 'carpeta' (carpetas del baúl)
+-- tipo: 'lista' (listas de tareas), 'pago' (categorías de pagos), 'medio' (medios de pago), 'carpeta' (carpetas del baúl)
 create table if not exists public.categorias (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  tipo text not null check (tipo in ('lista', 'pago', 'carpeta')),
+  tipo text not null check (tipo in ('lista', 'pago', 'carpeta', 'medio')),
   nombre text not null check (length(trim(nombre)) > 0),
   icono text,
   orden int not null default 0,
@@ -66,6 +66,7 @@ create table if not exists public.pagos (
   proxima_fecha date not null,
   valor numeric(14, 2),            -- vacío = valor variable
   categoria_id uuid references public.categorias(id) on delete set null,
+  medio_id uuid references public.categorias(id) on delete set null,   -- Nequi, Bancolombia, efectivo…
   notas text,
   created_at timestamptz not null default now()
 );
@@ -104,6 +105,7 @@ create index if not exists habitos_user_idx on public.habitos (user_id);
 create index if not exists registros_user_fecha_idx on public.habito_registros (user_id, fecha);
 create index if not exists pagos_user_idx on public.pagos (user_id);
 create index if not exists pagos_categoria_idx on public.pagos (categoria_id);
+create index if not exists pagos_medio_idx on public.pagos (medio_id);
 create index if not exists historial_pago_idx on public.pago_historial (pago_id);
 create index if not exists historial_user_idx on public.pago_historial (user_id);
 create index if not exists documentos_user_idx on public.documentos (user_id);

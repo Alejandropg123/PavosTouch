@@ -92,7 +92,7 @@ const Datos = {
     if (t === 'pagos') db.pago_historial = db.pago_historial.filter((r) => r.pago_id !== id);
     if (t === 'categorias') {
       db.tareas.forEach((r) => { if (r.lista_id === id) r.lista_id = null; });
-      db.pagos.forEach((r) => { if (r.categoria_id === id) r.categoria_id = null; });
+      db.pagos.forEach((r) => { if (r.categoria_id === id) r.categoria_id = null; if (r.medio_id === id) r.medio_id = null; });
       db.documentos.forEach((r) => { if (r.carpeta_id === id) r.carpeta_id = null; });
     }
     guardarLocal(); programarRender();
@@ -217,6 +217,7 @@ const CATEGORIAS_BASE = {
   carpeta: [['Familia', 'familia'], ['Personales', 'persona'], ['Importantes', 'estrella'], ['Vehículos', 'carro'], ['Otros', 'carpeta']],
   lista: [['Personal', 'persona'], ['Trabajo', 'trabajo'], ['Casa', 'casa']],
   pago: [['Hogar', 'casa'], ['Vehículo', 'carro'], ['Suscripciones', 'repetir'], ['Tarjetas', 'tarjeta']],
+  medio: [['Nequi', 'celular'], ['Bancolombia', 'banco'], ['Tarjeta de crédito', 'tarjeta'], ['Efectivo', 'dinero']],
 };
 
 function filasBase() {
@@ -262,7 +263,7 @@ function datosDemo() {
   habito_registros.push({ id: uid(), habito_id: habitos[0].id, fecha: h, detalle: null, created_at: new Date().toISOString() });
   habito_registros.push({ id: uid(), habito_id: habitos[2].id, fecha: h, detalle: null, created_at: new Date().toISOString() });
   const t = (titulo, fecha, prioridad, lista, repetir, urgente = false, importante = false) => ({ id: uid(), titulo, fecha, prioridad, lista_id: lista && cat('lista', lista), repetir: repetir || null, urgente, importante, hecha: false, hecha_en: null, created_at: new Date().toISOString() });
-  const p = (nombre, frecuencia, proxima_fecha, valor, categoria) => ({ id: uid(), nombre, frecuencia, proxima_fecha, valor, categoria_id: cat('pago', categoria), notas: null, created_at: new Date().toISOString() });
+  const p = (nombre, frecuencia, proxima_fecha, valor, categoria, medio) => ({ id: uid(), nombre, frecuencia, proxima_fecha, valor, categoria_id: cat('pago', categoria), medio_id: medio ? cat('medio', medio) : null, notas: null, created_at: new Date().toISOString() });
   const doc = (nombre, carpeta, persona, numero, exp, venc) => ({ id: uid(), nombre, carpeta_id: cat('carpeta', carpeta), persona, numero, fecha_expedicion: exp, fecha_vencimiento: venc, notas: null, archivos: [], created_at: new Date().toISOString() });
   return {
     categorias, habitos, habito_registros,
@@ -275,11 +276,12 @@ function datosDemo() {
       t('Organizar el garaje', null, null, 'Casa'),
     ],
     pagos: [
-      p('Arriendo', 'mensual', d(2), 1500000, 'Hogar'),
-      p('Tarjeta de crédito', 'mensual', d(-1), null, 'Tarjetas'),
-      p('Internet y TV', 'mensual', d(9), 129900, 'Hogar'),
-      p('Netflix', 'mensual', d(16), 44900, 'Suscripciones'),
-      p('Seguro todo riesgo', 'anual', d(75), 2350000, 'Vehículo'),
+      p('Arriendo', 'mensual', d(2), 1500000, 'Hogar', 'Bancolombia'),
+      p('Tarjeta de crédito', 'mensual', d(-1), null, 'Tarjetas', 'Bancolombia'),
+      p('Internet y TV', 'mensual', d(9), 129900, 'Hogar', 'Nequi'),
+      p('Netflix', 'mensual', d(16), 44900, 'Suscripciones', 'Tarjeta de crédito'),
+      p('Mercado', 'mensual', d(4), 800000, 'Hogar', 'Efectivo'),
+      p('Seguro todo riesgo', 'anual', d(75), 2350000, 'Vehículo', 'Tarjeta de crédito'),
     ],
     pago_historial: [],
     documentos: [
