@@ -89,6 +89,7 @@ const Datos = {
     db[t] = db[t].filter((r) => r.id !== id);
     // Lo mismo que hace la base de datos: borrar lo que depende y soltar referencias.
     if (t === 'habitos') db.habito_registros = db.habito_registros.filter((r) => r.habito_id !== id);
+    if (t === 'tareas') db.tareas = db.tareas.filter((r) => r.padre_id !== id);
     if (t === 'pagos') db.pago_historial = db.pago_historial.filter((r) => r.pago_id !== id);
     if (t === 'categorias') {
       db.tareas.forEach((r) => { if (r.lista_id === id) r.lista_id = null; });
@@ -265,6 +266,8 @@ function datosDemo() {
   const t = (titulo, fecha, prioridad, lista, repetir, urgente = false, importante = false) => ({ id: uid(), titulo, fecha, prioridad, lista_id: lista && cat('lista', lista), repetir: repetir || null, urgente, importante, hecha: false, hecha_en: null, created_at: new Date().toISOString() });
   const p = (nombre, frecuencia, proxima_fecha, valor, categoria, medio) => ({ id: uid(), nombre, frecuencia, proxima_fecha, valor, categoria_id: cat('pago', categoria), medio_id: medio ? cat('medio', medio) : null, notas: null, created_at: new Date().toISOString() });
   const doc = (nombre, carpeta, persona, numero, exp, venc) => ({ id: uid(), nombre, carpeta_id: cat('carpeta', carpeta), persona, numero, fecha_expedicion: exp, fecha_vencimiento: venc, notas: null, archivos: [], created_at: new Date().toISOString() });
+  // Tarea con subtareas de ejemplo
+  const mudanza = t('Organizar mudanza', d(12), 'alta', 'Personal', null, false, true);
   return {
     categorias, habitos, habito_registros,
     tareas: [
@@ -274,6 +277,9 @@ function datosDemo() {
       t('Comprar mercado de la semana', h, null, 'Casa', 'semanal'),
       t('Agendar cita médica', d(2), 'baja', 'Personal'),
       t('Organizar el garaje', null, null, 'Casa'),
+      mudanza,
+      ...[['Cotizar camión', true], ['Comprar cajas', true], ['Avisar al arrendador', true], ['Empacar cocina', false], ['Cambiar dirección en el banco', false]]
+        .map(([titulo, hecha], i) => ({ ...t(titulo, null, null, null), padre_id: mudanza.id, hecha, hecha_en: hecha ? new Date().toISOString() : null, created_at: new Date(Date.now() + i).toISOString() })),
     ],
     pagos: [
       p('Arriendo', 'mensual', d(2), 1500000, 'Hogar', 'Bancolombia'),

@@ -27,8 +27,11 @@ create table if not exists public.tareas (
   importante boolean not null default false,
   hecha boolean not null default false,
   hecha_en timestamptz,
+  padre_id uuid references public.tareas(id) on delete cascade, -- subtareas: tarea madre (un solo nivel)
   created_at timestamptz not null default now()
 );
+-- Para bases creadas antes de las subtareas
+alter table public.tareas add column if not exists padre_id uuid references public.tareas(id) on delete cascade;
 
 -- ---------- Hábitos ----------
 create table if not exists public.habitos (
@@ -101,6 +104,7 @@ create table if not exists public.documentos (
 create index if not exists categorias_user_idx on public.categorias (user_id, tipo);
 create index if not exists tareas_user_idx on public.tareas (user_id);
 create index if not exists tareas_lista_idx on public.tareas (lista_id);
+create index if not exists tareas_padre_idx on public.tareas (padre_id);
 create index if not exists habitos_user_idx on public.habitos (user_id);
 create index if not exists registros_user_fecha_idx on public.habito_registros (user_id, fecha);
 create index if not exists pagos_user_idx on public.pagos (user_id);
