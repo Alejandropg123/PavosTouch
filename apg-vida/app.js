@@ -14,6 +14,7 @@ const ICONOS = {
   buscar: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   ajustes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   derecha: '<path d="m9 18 6-6-6-6"/>',
+  abajo: '<path d="m6 9 6 6 6-6"/>',
   izquierda: '<path d="m15 18-6-6 6-6"/>',
   basura: '<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>',
   editar: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
@@ -94,7 +95,7 @@ const habitosOrden = () => db.habitos.slice().sort((a, b) => a.orden - b.orden |
 const registro = (habId, fecha) => db.habito_registros.find((r) => r.habito_id === habId && r.fecha === fecha);
 
 // ---------- Estado de la interfaz ----------
-const ui = { vistaDocs: localStorage.getItem('apgvida-vista-docs') || 'carpetas', kanbanPor: 'carpeta', ordenDocs: 'vence', carpetaFiltro: '', resPagos: 'semana', vistaHab: localStorage.getItem('apgvida-vista-hab') || 'hoy', diaHab: null, semanaHab: 0, mesHabRes: 0, verHabHechos: true, vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos' };
+const ui = { vistaDocs: localStorage.getItem('apgvida-vista-docs') || 'carpetas', kanbanPor: 'carpeta', ordenDocs: 'vence', carpetaFiltro: '', resPagos: 'semana', vistaHab: localStorage.getItem('apgvida-vista-hab') || 'hoy', diaHab: null, semanaHab: 0, mesHabRes: 0, verHabHechos: true, vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos', subsAbiertas: new Set(), subsNuevas: [] };
 const ocupado = new Set();   // evita dobles toques mientras se guarda
 
 // ---------- Toast ----------
@@ -196,7 +197,7 @@ function render() {
 // =====================================================================
 function tareasPendientesHoy() {
   const h = hoyISO();
-  return ordenarTareas(db.tareas.filter((t) => !t.hecha && t.fecha && t.fecha <= h));
+  return ordenarTareas(tareasMadre().filter((t) => !t.hecha && t.fecha && t.fecha <= h));
 }
 const pagosProximos = (dias) => db.pagos.filter((p) => diasEntre(hoyISO(), p.proxima_fecha) <= dias).sort((a, b) => a.proxima_fecha.localeCompare(b.proxima_fecha));
 const docsPorVencer = (dias) => db.documentos.filter((d) => d.fecha_vencimiento && diasEntre(hoyISO(), d.fecha_vencimiento) <= dias).sort((a, b) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento));
@@ -215,7 +216,7 @@ function vistaInicio() {
   const pagosVencidos = pagos.filter((p) => p.proxima_fecha < h).length;
   const docs = docsPorVencer(30);
   const docsVencidos = docs.filter((d) => d.fecha_vencimiento < h).length;
-  const tareasHechasHoy = db.tareas.filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) === h).length;
+  const tareasHechasHoy = tareasMadre().filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) === h).length;
   const estilo = ui.estiloInicio || Cuenta.ajuste('estiloInicio') || 'c';
   const datos = { tareas, habs, hechos, pagos, pagosVencidos, docs, docsVencidos, tareasHechasHoy };
   const cabecera = estilo === 'b' ? inicioB(datos) : estilo === 'c' ? inicioC(datos) : inicioA(datos);
@@ -251,7 +252,7 @@ function agendaInicio(x) {
       return `<div class="ag-fila" data-fila="${t.id}">
         <button type="button" class="check ${t.prioridad ? 'p-' + t.prioridad : ''}" data-act="toggle-tarea" data-id="${t.id}" aria-label="Marcar como hecha">${ic('check')}</button>
         <div class="cuerpo" data-act="editar-tarea" data-id="${t.id}"><div class="t">${esc(t.titulo)}</div>
-          <div class="meta">${it.f < h ? `<span class="txt-rojo">${esc(fechaCorta(it.f))}</span>` : ''}${l ? `<span><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</span>` : ''}${t.repetir ? `<span>${ic('repetir')}</span>` : ''}</div></div></div>`;
+          <div class="meta">${it.f < h ? `<span class="txt-rojo">${esc(fechaCorta(it.f))}</span>` : ''}${l ? `<span><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</span>` : ''}${t.repetir ? `<span>${ic('repetir')}</span>` : ''}${(() => { const a = avanceSubs(t.id); return a.total ? `<span class="sub-mini">${ic('check')}${a.hechas}/${a.total} · ${a.pct}%</span>` : ''; })()}</div></div></div>`;
     }
     if (it.tipo === 'pago') {
       const p = it.o;
@@ -339,6 +340,83 @@ const CUADROS = [
 const nombreCuadro = (q) => ((Cuenta.ajuste('cuadros') || {})[q.k] || q.def);
 const cuadroDe = (t) => CUADROS.find((q) => q.urgente === !!t.urgente && q.importante === !!t.importante);
 
+// ---------- Subtareas ----------
+// Una subtarea es una tarea con padre_id. Solo hay un nivel: las subtareas no tienen subtareas.
+const tareasMadre = () => db.tareas.filter((t) => !t.padre_id);
+const subtareas = (id) => db.tareas.filter((t) => t.padre_id === id).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+function avanceDe(lista) {
+  const hechas = lista.filter((x) => x.hecha).length;
+  return { total: lista.length, hechas, pct: lista.length ? Math.round((hechas * 100) / lista.length) : 0 };
+}
+const avanceSubs = (id) => avanceDe(subtareas(id));
+const barraSubs = (a) => `<div class="sub-prog ${a.pct === 100 ? 'completa' : ''}"><div class="sub-barra" role="progressbar" aria-valuenow="${a.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Avance de subtareas"><i style="width:${a.pct}%"></i></div><b>${a.pct}%</b><span>${a.hechas} de ${a.total}</span></div>`;
+function filaSub(s, enSheet) {
+  return `<div class="fila sub ${s.hecha ? 'hecha' : ''}">
+    <button type="button" class="check ${s.hecha ? 'on' : ''}" data-act="toggle-sub" data-id="${esc(s.id)}" aria-label="${s.hecha ? 'Marcar subtarea como pendiente' : 'Marcar subtarea como hecha'}">${ic('check')}</button>
+    <div class="cuerpo"${enSheet ? '' : ` data-act="editar-tarea" data-id="${s.padre_id}" data-paso="3"`}><div class="t">${esc(s.titulo)}</div></div>
+    ${enSheet ? `<button type="button" class="icono-btn" data-act="borrar-sub" data-id="${esc(s.id)}" aria-label="Borrar subtarea">${ic('x')}</button>` : ''}
+  </div>`;
+}
+// Bloque de subtareas dentro de la ficha de la tarea (paso 4)
+function htmlSubsSheet(padreId) {
+  const lista = padreId ? subtareas(padreId) : ui.subsNuevas;
+  if (!lista.length) return '<p class="sub-vacio">Aún no hay subtareas. Escribe la primera abajo.</p>';
+  const a = avanceDe(lista);
+  return `<div class="prog-grande"><div class="top"><span>Avance</span><span>${a.hechas} de ${a.total} · ${a.pct}%</span></div><div class="sub-barra"><i style="width:${a.pct}%"></i></div></div>
+    <div class="filas">${lista.map((x) => filaSub(x, true)).join('')}</div>`;
+}
+function refrescarSubsSheet() { const c = $('#subs-sheet'); if (c) c.innerHTML = htmlSubsSheet(c.dataset.padre || null); }
+async function agregarSub() {
+  const inp = $('#f-sub');
+  const titulo = (inp.value || '').trim();
+  if (!titulo) { inp.focus(); return; }
+  const padre = $('#subs-sheet').dataset.padre;
+  inp.value = '';
+  if (padre) {
+    try { await Datos.crear('tareas', { titulo, padre_id: padre, fecha: null, prioridad: null, lista_id: null, repetir: null, urgente: false, importante: false, hecha: false, hecha_en: null }); }
+    catch (e) { inp.value = titulo; }
+  } else ui.subsNuevas.push({ id: 'tmp-' + uid(), titulo, hecha: false });
+  refrescarSubsSheet();
+  inp.focus();
+}
+async function toggleSub(id) {
+  if (id.startsWith('tmp-')) { const x = ui.subsNuevas.find((s) => s.id === id); if (x) x.hecha = !x.hecha; refrescarSubsSheet(); return; }
+  const s = db.tareas.find((x) => x.id === id);
+  if (!s) return;
+  const hecha = !s.hecha;
+  const guardado = Datos.editar('tareas', id, { hecha, hecha_en: hecha ? new Date().toISOString() : null });
+  refrescarSubsSheet();
+  try { await guardado; } catch (e) { refrescarSubsSheet(); return; }
+  const padre = db.tareas.find((x) => x.id === s.padre_id);
+  if (!hecha || !padre || padre.hecha) return;
+  const a = avanceSubs(padre.id);
+  if (a.total && a.hechas === a.total
+    && await preguntar('¡Completaste todas las subtareas! 🎉', `¿Marcar también <b>“${esc(padre.titulo)}”</b> como hecha?`, 'Sí, marcar hecha', 'Todavía no')) {
+    cerrarSheet();
+    toggleTarea(padre.id);
+  }
+}
+async function borrarSub(id) {
+  if (id.startsWith('tmp-')) { ui.subsNuevas = ui.subsNuevas.filter((x) => x.id !== id); refrescarSubsSheet(); return; }
+  try { await Datos.borrar('tareas', id); } catch (e) { /* ya avisado */ }
+  refrescarSubsSheet();
+}
+// Ventana de confirmación con el estilo de la app. Devuelve true si toca "sí".
+function preguntar(titulo, mensajeHtml, si, no) {
+  return new Promise((ok) => {
+    const d = document.createElement('div');
+    d.className = 'dialogo';
+    d.innerHTML = `<div class="dialogo-caja" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t"><h3 id="dlg-t">${esc(titulo)}</h3><p>${mensajeHtml}</p>
+      <div class="acciones"><span class="espacio"></span><button type="button" class="btn" data-r="0">${esc(no)}</button><button type="button" class="btn primario" data-r="1">${esc(si)}</button></div></div>`;
+    const cerrar = (r) => { d.remove(); document.removeEventListener('keydown', tecla, true); ok(r); };
+    const tecla = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); cerrar(false); } };
+    d.addEventListener('click', (ev) => { const b = ev.target.closest('button[data-r]'); if (b) cerrar(b.dataset.r === '1'); else if (ev.target === d) cerrar(false); });
+    document.addEventListener('keydown', tecla, true);
+    document.body.appendChild(d);
+    d.querySelector('.primario').focus();
+  });
+}
+
 function filaTarea(t, compacta) {
   const h = hoyISO();
   const l = t.lista_id && cat(t.lista_id);
@@ -350,17 +428,23 @@ function filaTarea(t, compacta) {
     if (l) meta.push(`<span><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</span>`);
   }
   if (t.repetir) meta.push(`<span>${ic('repetir')}${compacta ? '' : NOMBRE_REPETIR[t.repetir]}</span>`);
+  const subs = subtareas(t.id);
+  const a = avanceDe(subs);
+  if (a.total && compacta) meta.push(`<span class="sub-mini">${ic('check')}${a.hechas}/${a.total}</span>`);
+  const abierta = a.total && !compacta && ui.subsAbiertas.has(t.id);
+  const extra = a.total && !compacta ? `${barraSubs(a)}<button type="button" class="btn-sub" data-act="ver-subs" data-id="${t.id}" aria-expanded="${abierta}">${ic(abierta ? 'abajo' : 'derecha')}${abierta ? 'Ocultar subtareas' : 'Ver subtareas'}</button>` : '';
   return `<div class="fila ${t.hecha ? 'hecha' : ''} ${compacta ? 'compacta' : ''}" data-fila="${t.id}">
     <button type="button" class="check ${t.hecha ? 'on' : ''} ${!t.hecha && t.prioridad ? 'p-' + t.prioridad : ''}" data-act="toggle-tarea" data-id="${t.id}" aria-label="${t.hecha ? 'Marcar como pendiente' : 'Marcar como hecha'}">${ic('check')}</button>
-    <div class="cuerpo" data-act="editar-tarea" data-id="${t.id}"><div class="t">${esc(t.titulo)}</div>${meta.length ? `<div class="meta">${meta.join('')}</div>` : ''}</div>
-  </div>`;
+    <div class="cuerpo" data-act="editar-tarea" data-id="${t.id}"><div class="t">${esc(t.titulo)}</div>${meta.length ? `<div class="meta">${meta.join('')}</div>` : ''}${extra}</div>
+  </div>${abierta ? `<div class="subs">${subs.map((x) => filaSub(x)).join('')}
+    <button type="button" class="subs-add" data-act="editar-tarea" data-id="${t.id}" data-paso="3">${ic('mas')}Agregar subtarea</button></div>` : ''}`;
 }
 
 const VISTAS_TAREAS = [['lista', 'Lista', 'lista'], ['calendario', 'Calendario', 'calendario'], ['matriz', 'Matriz', 'matriz']];
 
 function vistaTareas() {
   const h = hoyISO();
-  const pend = db.tareas.filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
+  const pend = tareasMadre().filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
   const cuerpo = ui.vistaTareas === 'calendario' ? tareasCalendario() : ui.vistaTareas === 'matriz' ? tareasMatriz() : tareasLista();
   const cuenta = { hoy: pend.filter((t) => t.fecha && t.fecha <= h).length, proximas: pend.filter((t) => t.fecha && t.fecha > h).length, sinfecha: pend.filter((t) => !t.fecha).length, todas: pend.length };
   return `
@@ -381,7 +465,7 @@ function vistaTareas() {
 
 function tareasLista() {
   const h = hoyISO();
-  const pend = db.tareas.filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
+  const pend = tareasMadre().filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
   const filtros = {
     hoy: ['Hoy', pend.filter((t) => t.fecha && t.fecha <= h)],
     proximas: ['Próximas', pend.filter((t) => t.fecha && t.fecha > h)],
@@ -390,7 +474,7 @@ function tareasLista() {
   };
   const [, lista] = filtros[ui.filtroTareas];
   ordenarTareas(lista);
-  const hechas = db.tareas.filter((t) => t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas))
+  const hechas = tareasMadre().filter((t) => t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas))
     .sort((a, b) => (b.hecha_en || '').localeCompare(a.hecha_en || ''));
 
   let cuerpo;
@@ -426,7 +510,7 @@ function tareasCalendario() {
   const y = base.getFullYear(); const m = base.getMonth();
   const diasMes = new Date(y, m + 1, 0).getDate();
   const offset = (new Date(y, m, 1).getDay() + 6) % 7;
-  const delFiltro = db.tareas.filter((t) => t.fecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
+  const delFiltro = tareasMadre().filter((t) => t.fecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
   const porDia = {};
   delFiltro.forEach((t) => { (porDia[t.fecha] = porDia[t.fecha] || []).push(t); });
   const sel = ui.diaTareas || h;
@@ -460,7 +544,7 @@ function tareasCalendario() {
 }
 
 function tareasMatriz() {
-  const pend = ordenarTareas(db.tareas.filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas)));
+  const pend = ordenarTareas(tareasMadre().filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas)));
   return `
   <div class="matriz-ayuda"><span>Urgente = hay que hacerlo pronto · Importante = te acerca a tus metas</span>
     <button type="button" class="link" data-act="nombres-cuadros">${ic('editar')} Nombres</button></div>
@@ -500,6 +584,8 @@ async function toggleTarea(id) {
     const antes = t.fecha;
     const sig = siguienteFecha(t.fecha, t.repetir);
     await Datos.editar('tareas', id, { fecha: sig });
+    // Al repetirse, sus subtareas vuelven a quedar pendientes
+    for (const x of subtareas(id).filter((s) => s.hecha)) Datos.editar('tareas', x.id, { hecha: false, hecha_en: null }).catch(() => {});
     toast(`Hecha · se repite el ${fmtFecha(sig)}`, false, { txt: 'Deshacer', fn: () => Datos.editar('tareas', id, { fecha: antes }) });
     return;
   }
@@ -525,10 +611,18 @@ function formTarea(id, preset = {}) {
       <input type="hidden" name="cuadro" value="${q.k}">
       <div class="campo-f" style="margin-top:14px"><span class="lbl">Prioridad</span>${seg('prioridad', [['', 'Ninguna'], ['alta', 'Alta'], ['media', 'Media'], ['baja', 'Baja']], t.prioridad)}</div>` },
   ];
+  if (!t.padre_id) {
+    ui.subsNuevas = [];
+    pasos.push({ t: 'Subtareas', ayuda: 'Divide la tarea en pasos pequeños', html: `
+      <div id="subs-sheet" data-padre="${id || ''}">${htmlSubsSheet(id)}</div>
+      <div class="input-sub"><input id="f-sub" type="text" data-sub-input maxlength="200" placeholder="Nueva subtarea…" autocomplete="off" aria-label="Nueva subtarea">
+        <button type="button" class="btn primario" data-act="sub-agregar" aria-label="Agregar subtarea">${ic('mas')}</button></div>` });
+  }
   // Solo el título es obligatorio: "Guardar" está disponible desde el primer paso
   abrirSheet(`${cabezaSheet(id ? 'Editar tarea' : 'Nueva tarea')}
   <form data-form="tarea" data-id="${id || ''}">${wizard(pasos, { borrar: id ? `<button type="button" class="btn peligro" data-act="borrar-tarea" data-id="${id}">${ic('basura')}</button>` : '' })}</form>`);
   prepararWizard();
+  if (preset.paso) moverWizard($('#sheet .wiz'), Number(preset.paso));
 }
 
 // Formulario por pasos: muestra una pregunta a la vez con barra de progreso.
@@ -1387,13 +1481,15 @@ async function generarInforme(tipo) {
       { didParseCell: (d) => { if (d.section === 'body' && d.column.index > 0) { d.cell.styles.halign = 'center'; if (d.cell.raw === 'Sí') { d.cell.styles.fillColor = [226, 246, 236]; d.cell.styles.textColor = [11, 138, 86]; d.cell.styles.fontStyle = 'bold'; } } } });
   }
   if (tipo === 'tareas') {
-    const pend = ordenarTareas(db.tareas.filter((t) => !t.hecha));
+    const pend = ordenarTareas(tareasMadre().filter((t) => !t.hecha));
     const hace30 = sumarDias(h, -30);
-    const hechas = db.tareas.filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) >= hace30).sort((a, b) => b.hecha_en.localeCompare(a.hecha_en));
+    const hechas = tareasMadre().filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) >= hace30).sort((a, b) => b.hecha_en.localeCompare(a.hecha_en));
     resumen([[String(pend.length), 'Pendientes'], [String(pend.filter((t) => t.fecha && t.fecha < h).length), 'Atrasadas'], [String(hechas.length), 'Hechas (30 días)']]);
     tabla('Pendientes', ['Tarea', 'Fecha', 'Lista', 'Matriz', 'Prioridad', 'Repetir'],
-      pend.map((t) => [t.titulo, t.fecha ? fechaCorta(t.fecha) + (t.fecha < h ? ' (atrasada)' : '') : '-', (cat(t.lista_id) || {}).nombre || '-', nombreCuadro(cuadroDe(t)), t.prioridad ? mayus(t.prioridad) : '-', t.repetir ? NOMBRE_REPETIR[t.repetir] : '-']),
-      { didParseCell: (d) => { if (d.section === 'body' && d.column.index === 1 && /atrasada/.test(d.cell.raw)) d.cell.styles.textColor = [200, 55, 45]; } });
+      pend.flatMap((t) => { const a = avanceSubs(t.id); return [[t.titulo + (a.total ? ` (${a.hechas}/${a.total} · ${a.pct}%)` : ''), t.fecha ? fechaCorta(t.fecha) + (t.fecha < h ? ' (atrasada)' : '') : '-', (cat(t.lista_id) || {}).nombre || '-', nombreCuadro(cuadroDe(t)), t.prioridad ? mayus(t.prioridad) : '-', t.repetir ? NOMBRE_REPETIR[t.repetir] : '-'],
+        ...subtareas(t.id).map((x) => ['     - ' + x.titulo + (x.hecha ? ' (hecha)' : ''), '', '', '', '', ''])]; }),
+      { didParseCell: (d) => { if (d.section === 'body' && d.column.index === 1 && /atrasada/.test(d.cell.raw)) d.cell.styles.textColor = [200, 55, 45];
+        if (d.section === 'body' && /^ {5}- /.test(d.row.raw[0])) { d.cell.styles.textColor = /\(hecha\)$/.test(d.row.raw[0]) ? [140, 145, 150] : [91, 96, 104]; d.cell.styles.fontSize = 8.5; } } });
     tabla('Completadas en los últimos 30 días', ['Tarea', 'Completada', 'Lista'], hechas.map((t) => [t.titulo, fmtFecha(isoDe(new Date(t.hecha_en)), true), (cat(t.lista_id) || {}).nombre || '-']));
   }
   if (tipo === 'documentos') {
@@ -1472,7 +1568,7 @@ function vistaAjustes() {
 
 function gestorCategorias(tipo) {
   const [titulo, , nueva] = TIPOS[tipo];
-  const uso = (c) => (tipo === 'lista' ? db.tareas.filter((t) => t.lista_id === c.id).length
+  const uso = (c) => (tipo === 'lista' ? tareasMadre().filter((t) => t.lista_id === c.id).length
     : tipo === 'pago' ? db.pagos.filter((p) => p.categoria_id === c.id).length : tipo === 'medio' ? db.pagos.filter((p) => p.medio_id === c.id).length : db.documentos.filter((d) => d.carpeta_id === c.id).length);
   abrirSheet(`${cabezaSheet(titulo)}
     <div class="filas">${cats(tipo).map((c) => `<div class="fila"><span class="doc-ic">${ic(c.icono || 'carpeta')}</span>
@@ -1531,13 +1627,17 @@ const ACCIONES = {
   'hoy-tareas': () => { ui.mesTareas = 0; ui.diaTareas = hoyISO(); render(); },
   'nombres-cuadros': () => formNombresCuadros(),
   'cuadros-defecto': () => { CUADROS.forEach((q) => { $(`#f-${q.k}`).value = q.def; }); },
-  'editar-tarea': (el) => formTarea(el.dataset.id),
-  'borrar-tarea': async (el) => { if (!confirmar('¿Borrar esta tarea?')) return; cerrarSheet(); await Datos.borrar('tareas', el.dataset.id); toast('Tarea borrada'); },
+  'editar-tarea': (el) => formTarea(el.dataset.id, { paso: el.dataset.paso }),
+  'ver-subs': (el) => { const id = el.dataset.id; if (ui.subsAbiertas.has(id)) ui.subsAbiertas.delete(id); else ui.subsAbiertas.add(id); render(); },
+  'toggle-sub': (el) => toggleSub(el.dataset.id),
+  'borrar-sub': (el) => borrarSub(el.dataset.id),
+  'sub-agregar': () => agregarSub(),
+  'borrar-tarea': async (el) => { const n = subtareas(el.dataset.id).length; if (!confirmar(n ? `¿Borrar esta tarea y sus ${plural(n, 'subtarea', 'subtareas')}?` : '¿Borrar esta tarea?')) return; cerrarSheet(); await Datos.borrar('tareas', el.dataset.id); toast('Tarea borrada'); },
   'filtro-tareas': (el) => { ui.filtroTareas = el.dataset.v; render(); },
   'lista-tareas': (el) => { ui.listaTareas = el.dataset.v || null; render(); },
   'ver-hechas': () => { ui.verHechas = !ui.verHechas; render(); },
   'borrar-hechas': async () => {
-    const hechas = db.tareas.filter((t) => t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
+    const hechas = tareasMadre().filter((t) => t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
     if (!confirmar(`¿Borrar ${plural(hechas.length, 'tarea completada', 'tareas completadas')}?`)) return;
     for (const t of hechas) await Datos.borrar('tareas', t.id);
     toast('Completadas borradas');
@@ -1710,6 +1810,7 @@ document.addEventListener('click', (ev) => {
 
 document.addEventListener('keydown', (ev) => {
   // En los formularios por pasos, Enter pasa al siguiente paso en vez de guardar
+  if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('[data-sub-input]')) { ev.preventDefault(); agregarSub(); return; }
   if (ev.key === 'Enter' && ev.target.tagName === 'INPUT') {
     const w = ev.target.closest('.wiz');
     if (w && !w.classList.contains('ultimo')) { ev.preventDefault(); moverWizard(w, Number(w.dataset.paso) + 1); return; }
@@ -1795,7 +1896,12 @@ const FORMULARIOS = {
     if (v.repetir && !v.fecha) v.fecha = hoyISO();
     cerrarSheet();
     if (f.dataset.id) await Datos.editar('tareas', f.dataset.id, v);
-    else await Datos.crear('tareas', { ...v, hecha: false, hecha_en: null });
+    else {
+      const subs = ui.subsNuevas; ui.subsNuevas = [];
+      const nueva = await Datos.crear('tareas', { ...v, hecha: false, hecha_en: null });
+      for (const x of subs) await Datos.crear('tareas', { titulo: x.titulo, padre_id: nueva.id, fecha: null, prioridad: null, lista_id: null, repetir: null, urgente: false, importante: false, hecha: x.hecha, hecha_en: x.hecha ? new Date().toISOString() : null });
+      if (subs.length) ui.subsAbiertas.add(nueva.id);
+    }
   },
   habito: async (f, datos) => {
     const meta = parseInt(datos.get('meta_dias'), 10);
