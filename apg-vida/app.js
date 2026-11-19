@@ -15,6 +15,7 @@ const ICONOS = {
   ajustes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   derecha: '<path d="m9 18 6-6-6-6"/>',
   abajo: '<path d="m6 9 6 6 6-6"/>',
+  tabla: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14.5h18M9 9v11"/>',
   izquierda: '<path d="m15 18-6-6 6-6"/>',
   basura: '<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>',
   editar: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
@@ -95,7 +96,7 @@ const habitosOrden = () => db.habitos.slice().sort((a, b) => a.orden - b.orden |
 const registro = (habId, fecha) => db.habito_registros.find((r) => r.habito_id === habId && r.fecha === fecha);
 
 // ---------- Estado de la interfaz ----------
-const ui = { vistaDocs: localStorage.getItem('apgvida-vista-docs') || 'carpetas', kanbanPor: 'carpeta', ordenDocs: 'vence', carpetaFiltro: '', resPagos: 'semana', vistaHab: localStorage.getItem('apgvida-vista-hab') || 'hoy', diaHab: null, semanaHab: 0, mesHabRes: 0, verHabHechos: true, vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos', subsAbiertas: new Set(), subsNuevas: [] };
+const ui = { vistaDocs: localStorage.getItem('apgvida-vista-docs') || 'carpetas', kanbanPor: 'carpeta', ordenDocs: 'vence', carpetaFiltro: '', resPagos: 'semana', vistaHab: localStorage.getItem('apgvida-vista-hab') || 'hoy', diaHab: null, semanaHab: 0, mesHabRes: 0, verHabHechos: true, vistaTareas: localStorage.getItem('apgvida-vista-tareas') || 'lista', mesTareas: 0, diaTareas: null, filtroTareas: 'hoy', listaTareas: null, verHechas: false, catPagos: null, mesHab: 0, busqueda: '', filtroVenc: 'todos', subsAbiertas: new Set(), subsNuevas: [], subDestino: null };
 const ocupado = new Set();   // evita dobles toques mientras se guarda
 
 // ---------- Toast ----------
@@ -341,41 +342,76 @@ const nombreCuadro = (q) => ((Cuenta.ajuste('cuadros') || {})[q.k] || q.def);
 const cuadroDe = (t) => CUADROS.find((q) => q.urgente === !!t.urgente && q.importante === !!t.importante);
 
 // ---------- Subtareas ----------
-// Una subtarea es una tarea con padre_id. Solo hay un nivel: las subtareas no tienen subtareas.
+// Una subtarea es una tarea con padre_id. Hay tres niveles: tarea → subtarea → sub-subtarea.
+const MAX_NIVEL = 3;
+const NOMBRE_NIVEL = { 1: 'Tarea', 2: 'Subtarea', 3: 'Sub-subtarea' };
+const porCreacion = (a, b) => (a.created_at || '').localeCompare(b.created_at || '');
 const tareasMadre = () => db.tareas.filter((t) => !t.padre_id);
-const subtareas = (id) => db.tareas.filter((t) => t.padre_id === id).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+const hijosDe = (fuente, id) => fuente.filter((t) => t.padre_id === id).sort(porCreacion);
+const subtareas = (id) => hijosDe(db.tareas, id);
+function descendientesDe(fuente, id) { return hijosDe(fuente, id).flatMap((x) => [x, ...descendientesDe(fuente, x.id)]); }
+const descendientes = (id) => descendientesDe(db.tareas, id);
+function nivelDe(t) { let n = 1; let p = t; while (p && p.padre_id && n < 10) { p = db.tareas.find((x) => x.id === p.padre_id); n++; } return n; }
+const raizDe = (t) => { let p = t; while (p && p.padre_id) { const sig = db.tareas.find((x) => x.id === p.padre_id); if (!sig) break; p = sig; } return p; };
 function avanceDe(lista) {
   const hechas = lista.filter((x) => x.hecha).length;
   return { total: lista.length, hechas, pct: lista.length ? Math.round((hechas * 100) / lista.length) : 0 };
 }
-const avanceSubs = (id) => avanceDe(subtareas(id));
+// El avance cuenta todas las subtareas y sub-subtareas de la tarea
+const avanceSubs = (id) => avanceDe(descendientes(id));
 const barraSubs = (a) => `<div class="sub-prog ${a.pct === 100 ? 'completa' : ''}"><div class="sub-barra" role="progressbar" aria-valuenow="${a.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Avance de subtareas"><i style="width:${a.pct}%"></i></div><b>${a.pct}%</b><span>${a.hechas} de ${a.total}</span></div>`;
-function filaSub(s, enSheet) {
-  return `<div class="fila sub ${s.hecha ? 'hecha' : ''}">
-    <button type="button" class="check ${s.hecha ? 'on' : ''}" data-act="toggle-sub" data-id="${esc(s.id)}" aria-label="${s.hecha ? 'Marcar subtarea como pendiente' : 'Marcar subtarea como hecha'}">${ic('check')}</button>
-    <div class="cuerpo"${enSheet ? '' : ` data-act="editar-tarea" data-id="${s.padre_id}" data-paso="3"`}><div class="t">${esc(s.titulo)}</div></div>
-    ${enSheet ? `<button type="button" class="icono-btn" data-act="borrar-sub" data-id="${esc(s.id)}" aria-label="Borrar subtarea">${ic('x')}</button>` : ''}
+function filaSub(s, enSheet, nivel, fuente) {
+  const a = nivel < MAX_NIVEL ? avanceDe(descendientesDe(fuente || db.tareas, s.id)) : { total: 0 };
+  const raiz = enSheet ? null : raizDe(s);
+  return `<div class="fila sub n${nivel} ${s.hecha ? 'hecha' : ''}">
+    <button type="button" class="check ${s.hecha ? 'on' : ''}" data-act="toggle-sub" data-id="${esc(s.id)}" aria-label="${s.hecha ? 'Marcar como pendiente' : 'Marcar como hecha'}">${ic('check')}</button>
+    <div class="cuerpo"${enSheet ? '' : ` data-act="editar-tarea" data-id="${raiz.id}" data-paso="3"`}><div class="t">${esc(s.titulo)}</div>${a.total ? `<div class="meta"><span class="sub-mini">${ic('check')}${a.hechas}/${a.total}</span></div>` : ''}</div>
+    ${enSheet && nivel < MAX_NIVEL ? `<button type="button" class="icono-btn sub-hija ${ui.subDestino === s.id ? 'on' : ''}" data-act="sub-destino" data-id="${esc(s.id)}" aria-label="Agregar sub-subtarea dentro de ${esc(s.titulo)}" title="Agregar dentro">${ic('mas')}</button>` : ''}
+    ${enSheet ? `<button type="button" class="icono-btn" data-act="borrar-sub" data-id="${esc(s.id)}" aria-label="Borrar">${ic('x')}</button>` : ''}
   </div>`;
+}
+// Árbol de subtareas (nivel 2 y 3) para la lista o la ficha
+function arbolSubs(fuente, id, nivel, enSheet) {
+  return hijosDe(fuente, id).map((s) => {
+    const hijos = nivel < MAX_NIVEL ? arbolSubs(fuente, s.id, nivel + 1, enSheet) : '';
+    return filaSub(s, enSheet, nivel, fuente) + (hijos ? `<div class="subs-n3">${hijos}</div>` : '');
+  }).join('');
 }
 // Bloque de subtareas dentro de la ficha de la tarea (paso 4)
 function htmlSubsSheet(padreId) {
-  const lista = padreId ? subtareas(padreId) : ui.subsNuevas;
-  if (!lista.length) return '<p class="sub-vacio">Aún no hay subtareas. Escribe la primera abajo.</p>';
-  const a = avanceDe(lista);
+  const fuente = padreId ? db.tareas : ui.subsNuevas;
+  const raiz = padreId || 'nueva';
+  const todas = descendientesDe(fuente, raiz);
+  if (!todas.length) return '<p class="sub-vacio">Aún no hay subtareas. Escribe la primera abajo.</p>';
+  const a = avanceDe(todas);
   return `<div class="prog-grande"><div class="top"><span>Avance</span><span>${a.hechas} de ${a.total} · ${a.pct}%</span></div><div class="sub-barra"><i style="width:${a.pct}%"></i></div></div>
-    <div class="filas">${lista.map((x) => filaSub(x, true)).join('')}</div>`;
+    <div class="filas">${arbolSubs(fuente, raiz, 2, true)}</div>`;
 }
-function refrescarSubsSheet() { const c = $('#subs-sheet'); if (c) c.innerHTML = htmlSubsSheet(c.dataset.padre || null); }
+function htmlDestino() {
+  const fuente = $('#subs-sheet') && $('#subs-sheet').dataset.padre ? db.tareas : ui.subsNuevas;
+  const d = ui.subDestino && fuente.find((x) => x.id === ui.subDestino);
+  if (!d) { ui.subDestino = null; return ''; }
+  return `<div class="sub-destino">${ic('derecha')}<span>Agregando dentro de <b>${esc(d.titulo)}</b></span>
+    <button type="button" class="icono-btn" data-act="sub-destino" data-id="" aria-label="Agregar como subtarea normal">${ic('x')}</button></div>`;
+}
+function refrescarSubsSheet() {
+  const c = $('#subs-sheet');
+  if (!c) return;
+  c.innerHTML = htmlSubsSheet(c.dataset.padre || null);
+  const d = $('#sub-destino'); if (d) d.innerHTML = htmlDestino();
+  const inp = $('#f-sub'); if (inp) inp.placeholder = ui.subDestino ? 'Nueva sub-subtarea…' : 'Nueva subtarea…';
+}
 async function agregarSub() {
   const inp = $('#f-sub');
   const titulo = (inp.value || '').trim();
   if (!titulo) { inp.focus(); return; }
-  const padre = $('#subs-sheet').dataset.padre;
+  const raiz = $('#subs-sheet').dataset.padre;
+  const padre = ui.subDestino || raiz || 'nueva';
   inp.value = '';
-  if (padre) {
+  if (raiz) {
     try { await Datos.crear('tareas', { titulo, padre_id: padre, fecha: null, prioridad: null, lista_id: null, repetir: null, urgente: false, importante: false, hecha: false, hecha_en: null }); }
     catch (e) { inp.value = titulo; }
-  } else ui.subsNuevas.push({ id: 'tmp-' + uid(), titulo, hecha: false });
+  } else ui.subsNuevas.push({ id: 'tmp-' + uid(), titulo, hecha: false, padre_id: padre, created_at: new Date(Date.now() + ui.subsNuevas.length).toISOString() });
   refrescarSubsSheet();
   inp.focus();
 }
@@ -387,18 +423,31 @@ async function toggleSub(id) {
   const guardado = Datos.editar('tareas', id, { hecha, hecha_en: hecha ? new Date().toISOString() : null });
   refrescarSubsSheet();
   try { await guardado; } catch (e) { refrescarSubsSheet(); return; }
-  const padre = db.tareas.find((x) => x.id === s.padre_id);
-  if (!hecha || !padre || padre.hecha) return;
-  const a = avanceSubs(padre.id);
-  if (a.total && a.hechas === a.total
-    && await preguntar('¡Completaste todas las subtareas! 🎉', `¿Marcar también <b>“${esc(padre.titulo)}”</b> como hecha?`, 'Sí, marcar hecha', 'Todavía no')) {
-    cerrarSheet();
-    toggleTarea(padre.id);
+  if (!hecha) return;
+  // Si se completó todo lo que cuelga de un nivel superior, pregunta si marcarlo también
+  let padre = db.tareas.find((x) => x.id === s.padre_id);
+  while (padre && !padre.hecha) {
+    const a = avanceSubs(padre.id);
+    if (!a.total || a.hechas !== a.total) return;
+    const esMadre = !padre.padre_id;
+    const ok = await preguntar(esMadre ? '¡Completaste todas las subtareas! 🎉' : '¡Listo este grupo! 🎉',
+      `¿Marcar también <b>“${esc(padre.titulo)}”</b> como hecha?`, 'Sí, marcar hecha', 'Todavía no');
+    if (!ok) return;
+    if (esMadre) { cerrarSheet(); toggleTarea(padre.id); return; }
+    try { await Datos.editar('tareas', padre.id, { hecha: true, hecha_en: new Date().toISOString() }); } catch (e) { return; }
+    refrescarSubsSheet();
+    padre = db.tareas.find((x) => x.id === padre.padre_id);
   }
 }
 async function borrarSub(id) {
-  if (id.startsWith('tmp-')) { ui.subsNuevas = ui.subsNuevas.filter((x) => x.id !== id); refrescarSubsSheet(); return; }
-  try { await Datos.borrar('tareas', id); } catch (e) { /* ya avisado */ }
+  if (id.startsWith('tmp-')) {
+    const quitar = new Set([id, ...descendientesDe(ui.subsNuevas, id).map((x) => x.id)]);
+    ui.subsNuevas = ui.subsNuevas.filter((x) => !quitar.has(x.id));
+  } else {
+    const n = descendientes(id).length;
+    if (n && !confirmar(`¿Borrar esta subtarea y ${plural(n, 'sub-subtarea', 'sub-subtareas')}?`)) return;
+    try { await Datos.borrar('tareas', id); } catch (e) { /* ya avisado */ }
+  }
   refrescarSubsSheet();
 }
 // Ventana de confirmación con el estilo de la app. Devuelve true si toca "sí".
@@ -428,24 +477,62 @@ function filaTarea(t, compacta) {
     if (l) meta.push(`<span><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</span>`);
   }
   if (t.repetir) meta.push(`<span>${ic('repetir')}${compacta ? '' : NOMBRE_REPETIR[t.repetir]}</span>`);
-  const subs = subtareas(t.id);
-  const a = avanceDe(subs);
+  const a = avanceSubs(t.id);
   if (a.total && compacta) meta.push(`<span class="sub-mini">${ic('check')}${a.hechas}/${a.total}</span>`);
   const abierta = a.total && !compacta && ui.subsAbiertas.has(t.id);
   const extra = a.total && !compacta ? `${barraSubs(a)}<button type="button" class="btn-sub" data-act="ver-subs" data-id="${t.id}" aria-expanded="${abierta}">${ic(abierta ? 'abajo' : 'derecha')}${abierta ? 'Ocultar subtareas' : 'Ver subtareas'}</button>` : '';
   return `<div class="fila ${t.hecha ? 'hecha' : ''} ${compacta ? 'compacta' : ''}" data-fila="${t.id}">
     <button type="button" class="check ${t.hecha ? 'on' : ''} ${!t.hecha && t.prioridad ? 'p-' + t.prioridad : ''}" data-act="toggle-tarea" data-id="${t.id}" aria-label="${t.hecha ? 'Marcar como pendiente' : 'Marcar como hecha'}">${ic('check')}</button>
     <div class="cuerpo" data-act="editar-tarea" data-id="${t.id}"><div class="t">${esc(t.titulo)}</div>${meta.length ? `<div class="meta">${meta.join('')}</div>` : ''}${extra}</div>
-  </div>${abierta ? `<div class="subs">${subs.map((x) => filaSub(x)).join('')}
+  </div>${abierta ? `<div class="subs">${arbolSubs(db.tareas, t.id, 2)}
     <button type="button" class="subs-add" data-act="editar-tarea" data-id="${t.id}" data-paso="3">${ic('mas')}Agregar subtarea</button></div>` : ''}`;
 }
 
-const VISTAS_TAREAS = [['lista', 'Lista', 'lista'], ['calendario', 'Calendario', 'calendario'], ['matriz', 'Matriz', 'matriz']];
+const VISTAS_TAREAS = [['lista', 'Lista', 'lista'], ['tabla', 'Tabla', 'tabla'], ['calendario', 'Calendario', 'calendario'], ['matriz', 'Matriz', 'matriz']];
+
+// Vista tabla: cada tarea con sus subtareas y sub-subtareas, numeradas (1, 1.1, 1.1.1)
+function filasJerarquia(madres) {
+  const filas = [];
+  const agregar = (t, nivel, num) => {
+    filas.push({ t, nivel, num });
+    if (nivel < MAX_NIVEL) subtareas(t.id).forEach((x, i) => agregar(x, nivel + 1, `${num}.${i + 1}`));
+  };
+  madres.forEach((t, i) => agregar(t, 1, String(i + 1)));
+  return filas;
+}
+function tareasTabla() {
+  const h = hoyISO();
+  const madres = ordenarTareas(tareasMadre().filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas)));
+  if (!madres.length) return `<section class="card"><div class="vacio">${ic('check')}No hay tareas pendientes.</div>
+    <button type="button" class="agregar-linea" data-act="nueva-tarea">${ic('mas')}Agregar tarea</button></section>`;
+  const filas = filasJerarquia(madres).map(({ t, nivel, num }) => {
+    const l = nivel === 1 && t.lista_id && cat(t.lista_id);
+    const a = nivel < MAX_NIVEL ? avanceSubs(t.id) : { total: 0 };
+    const raiz = nivel === 1 ? t : raizDe(t);
+    return `<tr class="n${nivel} ${t.hecha ? 'hecha' : ''}">
+      <td class="c-check"><button type="button" class="check ${t.hecha ? 'on' : ''} ${nivel === 1 && !t.hecha && t.prioridad ? 'p-' + t.prioridad : ''}" data-act="${nivel === 1 ? 'toggle-tarea' : 'toggle-sub'}" data-id="${t.id}" aria-label="${t.hecha ? 'Marcar como pendiente' : 'Marcar como hecha'}">${ic('check')}</button></td>
+      <td class="c-num">${num}</td>
+      <td class="c-tarea"><div class="arbol" data-act="editar-tarea" data-id="${raiz.id}"${nivel > 1 ? ' data-paso="3"' : ''}><span class="t">${esc(t.titulo)}</span>${nivel > 1 ? `<small>${NOMBRE_NIVEL[nivel]}</small>` : ''}</div></td>
+      <td class="c-fecha ${!t.hecha && t.fecha && t.fecha < h ? 'txt-rojo' : ''}">${t.fecha ? esc(fechaCorta(t.fecha)) : ''}</td>
+      <td class="c-lista">${l ? `<span><i class="punto" style="background:${colorLista(l.id)}"></i>${esc(l.nombre)}</span>` : ''}</td>
+      <td class="c-prio">${t.prioridad ? mayus(t.prioridad) : ''}</td>
+      <td class="c-avance">${a.total ? `<div class="sub-prog"><div class="sub-barra"><i style="width:${a.pct}%"></i></div><b>${a.pct}%</b></div>` : ''}</td>
+    </tr>`;
+  }).join('');
+  return `
+  <section class="card tabla-card">
+    <div class="tabla-scroll"><table class="tabla-tareas">
+      <thead><tr><th class="c-check"><span class="sr">Hecha</span></th><th class="c-num">#</th><th>Tarea</th><th>Fecha</th><th>Lista</th><th>Prioridad</th><th>Avance</th></tr></thead>
+      <tbody>${filas}</tbody></table></div>
+    <div class="tabla-ley"><span><i class="ley n1"></i>Tarea</span><span><i class="ley n2"></i>Subtarea</span><span><i class="ley n3"></i>Sub-subtarea</span></div>
+    <button type="button" class="agregar-linea" data-act="nueva-tarea">${ic('mas')}Agregar tarea</button>
+  </section>`;
+}
 
 function vistaTareas() {
   const h = hoyISO();
   const pend = tareasMadre().filter((t) => !t.hecha && (!ui.listaTareas || t.lista_id === ui.listaTareas));
-  const cuerpo = ui.vistaTareas === 'calendario' ? tareasCalendario() : ui.vistaTareas === 'matriz' ? tareasMatriz() : tareasLista();
+  const cuerpo = ui.vistaTareas === 'calendario' ? tareasCalendario() : ui.vistaTareas === 'matriz' ? tareasMatriz() : ui.vistaTareas === 'tabla' ? tareasTabla() : tareasLista();
   const cuenta = { hoy: pend.filter((t) => t.fecha && t.fecha <= h).length, proximas: pend.filter((t) => t.fecha && t.fecha > h).length, sinfecha: pend.filter((t) => !t.fecha).length, todas: pend.length };
   return `
   <div class="cabeza"><div class="txt"><h1>Tareas</h1><p>${plural(pend.length, 'pendiente', 'pendientes')}</p></div>
@@ -585,7 +672,7 @@ async function toggleTarea(id) {
     const sig = siguienteFecha(t.fecha, t.repetir);
     await Datos.editar('tareas', id, { fecha: sig });
     // Al repetirse, sus subtareas vuelven a quedar pendientes
-    for (const x of subtareas(id).filter((s) => s.hecha)) Datos.editar('tareas', x.id, { hecha: false, hecha_en: null }).catch(() => {});
+    for (const x of descendientes(id).filter((s) => s.hecha)) Datos.editar('tareas', x.id, { hecha: false, hecha_en: null }).catch(() => {});
     toast(`Hecha · se repite el ${fmtFecha(sig)}`, false, { txt: 'Deshacer', fn: () => Datos.editar('tareas', id, { fecha: antes }) });
     return;
   }
@@ -612,9 +699,11 @@ function formTarea(id, preset = {}) {
       <div class="campo-f" style="margin-top:14px"><span class="lbl">Prioridad</span>${seg('prioridad', [['', 'Ninguna'], ['alta', 'Alta'], ['media', 'Media'], ['baja', 'Baja']], t.prioridad)}</div>` },
   ];
   if (!t.padre_id) {
-    ui.subsNuevas = [];
+    ui.subsNuevas = []; ui.subDestino = null;
     pasos.push({ t: 'Subtareas', ayuda: 'Divide la tarea en pasos pequeños', html: `
       <div id="subs-sheet" data-padre="${id || ''}">${htmlSubsSheet(id)}</div>
+      <p class="sub-ayuda">Toca ${ic('mas')} junto a una subtarea para agregarle sub-subtareas.</p>
+      <div id="sub-destino"></div>
       <div class="input-sub"><input id="f-sub" type="text" data-sub-input maxlength="200" placeholder="Nueva subtarea…" autocomplete="off" aria-label="Nueva subtarea">
         <button type="button" class="btn primario" data-act="sub-agregar" aria-label="Agregar subtarea">${ic('mas')}</button></div>` });
   }
@@ -1485,11 +1574,42 @@ async function generarInforme(tipo) {
     const hace30 = sumarDias(h, -30);
     const hechas = tareasMadre().filter((t) => t.hecha && t.hecha_en && isoDe(new Date(t.hecha_en)) >= hace30).sort((a, b) => b.hecha_en.localeCompare(a.hecha_en));
     resumen([[String(pend.length), 'Pendientes'], [String(pend.filter((t) => t.fecha && t.fecha < h).length), 'Atrasadas'], [String(hechas.length), 'Hechas (30 días)']]);
-    tabla('Pendientes', ['Tarea', 'Fecha', 'Lista', 'Matriz', 'Prioridad', 'Repetir'],
-      pend.flatMap((t) => { const a = avanceSubs(t.id); return [[t.titulo + (a.total ? ` (${a.hechas}/${a.total} · ${a.pct}%)` : ''), t.fecha ? fechaCorta(t.fecha) + (t.fecha < h ? ' (atrasada)' : '') : '-', (cat(t.lista_id) || {}).nombre || '-', nombreCuadro(cuadroDe(t)), t.prioridad ? mayus(t.prioridad) : '-', t.repetir ? NOMBRE_REPETIR[t.repetir] : '-'],
-        ...subtareas(t.id).map((x) => ['     - ' + x.titulo + (x.hecha ? ' (hecha)' : ''), '', '', '', '', ''])]; }),
-      { didParseCell: (d) => { if (d.section === 'body' && d.column.index === 1 && /atrasada/.test(d.cell.raw)) d.cell.styles.textColor = [200, 55, 45];
-        if (d.section === 'body' && /^ {5}- /.test(d.row.raw[0])) { d.cell.styles.textColor = /\(hecha\)$/.test(d.row.raw[0]) ? [140, 145, 150] : [91, 96, 104]; d.cell.styles.fontSize = 8.5; } } });
+    // Lista para imprimir: casilla para marcar a mano, numeración y sangría por nivel
+    const jer = filasJerarquia(pend);
+    tabla('Pendientes', ['', '#', 'Tarea', 'Fecha', 'Lista', 'Prioridad', 'Avance'],
+      jer.map(({ t, nivel, num }) => {
+        const a = nivel < MAX_NIVEL ? avanceSubs(t.id) : { total: 0 };
+        return ['', num, t.titulo, t.fecha ? fechaCorta(t.fecha) + (!t.hecha && t.fecha < h ? ' (atrasada)' : '') : '',
+          nivel === 1 ? (cat(t.lista_id) || {}).nombre || '' : '', t.prioridad ? mayus(t.prioridad) : '', a.total ? `${a.hechas}/${a.total} · ${a.pct}%` : ''];
+      }),
+      { alternateRowStyles: {}, rowPageBreak: 'avoid',
+        columnStyles: { 0: { cellWidth: 9 }, 1: { cellWidth: 13, textColor: GRIS }, 3: { cellWidth: 26 }, 4: { cellWidth: 24 }, 5: { cellWidth: 19 }, 6: { cellWidth: 24 } },
+        didParseCell: (d) => {
+          if (d.section !== 'body' || !jer.length) return;
+          const { t, nivel } = jer[d.row.index];
+          if (nivel === 1) { d.cell.styles.fillColor = [236, 247, 241]; d.cell.styles.fontStyle = d.column.index === 2 ? 'bold' : 'normal'; }
+          if (nivel === 3) d.cell.styles.fontSize = 8.5;
+          if (d.column.index === 2) d.cell.styles.cellPadding = { top: 2.5, bottom: 2.5, right: 2.5, left: 2.5 + (nivel - 1) * 6 };
+          if (t.hecha) d.cell.styles.textColor = [150, 155, 160];
+          if (d.column.index === 3 && /atrasada/.test(d.cell.raw)) d.cell.styles.textColor = [200, 55, 45];
+        },
+        didDrawCell: (d) => {
+          if (d.section !== 'body' || !jer.length) return;
+          const { t, nivel } = jer[d.row.index];
+          if (d.column.index === 0) {
+            // Casilla para marcar con lápiz (marcada si ya está hecha)
+            const lado = nivel === 1 ? 4.2 : 3.6;
+            const x = d.cell.x + (d.cell.width - lado) / 2; const yy = d.cell.y + (d.cell.height - lado) / 2;
+            doc.setDrawColor(...GRAFITO); doc.setLineWidth(0.35); doc.rect(x, yy, lado, lado);
+            if (t.hecha) { doc.setDrawColor(...VERDE); doc.setLineWidth(0.6); doc.line(x + 0.8, yy + lado * 0.55, x + lado * 0.42, yy + lado - 0.8); doc.line(x + lado * 0.42, yy + lado - 0.8, x + lado - 0.6, yy + 0.7); }
+          }
+          if (d.column.index === 2 && nivel > 1) {
+            // Guía de jerarquía: línea en "L" hacia la tarea de arriba
+            const xg = d.cell.x + 2.5 + (nivel - 2) * 6 + 2; const ym = d.cell.y + d.cell.height / 2;
+            doc.setDrawColor(170, 200, 185); doc.setLineWidth(0.3);
+            doc.line(xg, d.cell.y, xg, ym); doc.line(xg, ym, xg + 2.6, ym);
+          }
+        } });
     tabla('Completadas en los últimos 30 días', ['Tarea', 'Completada', 'Lista'], hechas.map((t) => [t.titulo, fmtFecha(isoDe(new Date(t.hecha_en)), true), (cat(t.lista_id) || {}).nombre || '-']));
   }
   if (tipo === 'documentos') {
@@ -1632,7 +1752,8 @@ const ACCIONES = {
   'toggle-sub': (el) => toggleSub(el.dataset.id),
   'borrar-sub': (el) => borrarSub(el.dataset.id),
   'sub-agregar': () => agregarSub(),
-  'borrar-tarea': async (el) => { const n = subtareas(el.dataset.id).length; if (!confirmar(n ? `¿Borrar esta tarea y sus ${plural(n, 'subtarea', 'subtareas')}?` : '¿Borrar esta tarea?')) return; cerrarSheet(); await Datos.borrar('tareas', el.dataset.id); toast('Tarea borrada'); },
+  'sub-destino': (el) => { ui.subDestino = el.dataset.id && ui.subDestino !== el.dataset.id ? el.dataset.id : null; refrescarSubsSheet(); const i = $('#f-sub'); if (i) i.focus(); },
+  'borrar-tarea': async (el) => { const n = descendientes(el.dataset.id).length; if (!confirmar(n ? `¿Borrar esta tarea y ${plural(n, 'subtarea', 'subtareas')}?` : '¿Borrar esta tarea?')) return; cerrarSheet(); await Datos.borrar('tareas', el.dataset.id); toast('Tarea borrada'); },
   'filtro-tareas': (el) => { ui.filtroTareas = el.dataset.v; render(); },
   'lista-tareas': (el) => { ui.listaTareas = el.dataset.v || null; render(); },
   'ver-hechas': () => { ui.verHechas = !ui.verHechas; render(); },
@@ -1899,7 +2020,10 @@ const FORMULARIOS = {
     else {
       const subs = ui.subsNuevas; ui.subsNuevas = [];
       const nueva = await Datos.crear('tareas', { ...v, hecha: false, hecha_en: null });
-      for (const x of subs) await Datos.crear('tareas', { titulo: x.titulo, padre_id: nueva.id, fecha: null, prioridad: null, lista_id: null, repetir: null, urgente: false, importante: false, hecha: x.hecha, hecha_en: x.hecha ? new Date().toISOString() : null });
+      const ids = { nueva: nueva.id };
+      // Primero las subtareas y luego las sub-subtareas, para que cada una tenga su padre creado
+      const orden = [...subs.filter((x) => x.padre_id === 'nueva'), ...subs.filter((x) => x.padre_id !== 'nueva')];
+      for (const x of orden) ids[x.id] = (await Datos.crear('tareas', { titulo: x.titulo, padre_id: ids[x.padre_id], fecha: null, prioridad: null, lista_id: null, repetir: null, urgente: false, importante: false, hecha: x.hecha, hecha_en: x.hecha ? new Date().toISOString() : null })).id;
       if (subs.length) ui.subsAbiertas.add(nueva.id);
     }
   },

@@ -874,3 +874,51 @@ textarea { min-height: 84px; resize: vertical; }
 .dialogo-caja h3 { font-family: var(--f-titulo); font-size: 18px; margin: 0 0 8px; }
 .dialogo-caja p { color: var(--muted); margin: 0 0 18px; }
 @keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Tres niveles y vista tabla ---------- */
+.subs-n3 { margin-left: 14px; padding-left: 14px; border-left: 2px dashed var(--line); }
+.fila.sub.n3 { min-height: 36px; padding: 4px 0; }
+.fila.sub.n3 .check { width: 19px; height: 19px; }
+.fila.sub.n3 .t { font-size: 14px; color: var(--muted); }
+.fila.sub.n3.hecha .t { color: var(--muted); }
+.icono-btn.sub-hija.on { background: var(--verde-tint); color: var(--verde-ink); }
+.sub-ayuda { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+.sub-ayuda svg.i { width: 14px; height: 14px; }
+.sub-destino { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 6px 6px 6px 10px; background: var(--verde-tint); color: var(--verde-ink); border-radius: 12px; font-size: 13px; }
+.sub-destino span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sub-destino svg.i { width: 15px; height: 15px; }
+.sub-destino:empty { display: none; }
+
+.tabla-card { padding-left: 0; padding-right: 0; }
+.tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabla-tareas { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; }
+.tabla-tareas th { text-align: left; font: 700 11px var(--f-titulo); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 8px; border-bottom: 2px solid var(--line); white-space: nowrap; }
+.tabla-tareas td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+.tabla-tareas th:first-child, .tabla-tareas td:first-child { padding-left: 18px; }
+.tabla-tareas .c-check { width: 44px; }
+.tabla-tareas .c-num { width: 46px; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+.tabla-tareas .c-fecha, .tabla-tareas .c-prio { white-space: nowrap; font-size: 13px; }
+.tabla-tareas .c-lista span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 13px; }
+.tabla-tareas .c-avance { width: 120px; }
+.tabla-tareas .c-avance .sub-prog { margin: 0; }
+.tabla-tareas .arbol { display: flex; flex-direction: column; cursor: pointer; position: relative; }
+.tabla-tareas .arbol small { font-size: 11px; color: var(--muted); }
+.tabla-tareas tr.n1 td { background: #F3FAF6; border-top: 1px solid #DCEFE4; }
+.tabla-tareas tr.n1 .t { font-weight: 800; font-family: var(--f-titulo); font-size: 14px; }
+.tabla-tareas tr.n2 .arbol { padding-left: 22px; }
+.tabla-tareas tr.n3 .arbol { padding-left: 44px; }
+.tabla-tareas tr.n2 .arbol::before, .tabla-tareas tr.n3 .arbol::before { content: ''; position: absolute; top: -6px; height: calc(50% + 6px); width: 10px; border-left: 2px solid #BFE3CF; border-bottom: 2px solid #BFE3CF; border-bottom-left-radius: 6px; }
+.tabla-tareas tr.n2 .arbol::before { left: 6px; }
+.tabla-tareas tr.n3 .arbol::before { left: 28px; border-color: var(--line); }
+.tabla-tareas tr.n3 .t { font-size: 13px; color: var(--muted); }
+.tabla-tareas .check { width: 22px; height: 22px; }
+.tabla-tareas tr.n3 .check { width: 19px; height: 19px; }
+.tabla-tareas tr.hecha .t { text-decoration: line-through; color: var(--muted); }
+.tabla-ley { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding: 10px 18px 0; }
+.tabla-ley span { display: inline-flex; align-items: center; gap: 5px; }
+.ley { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.ley.n1 { background: #F3FAF6; border: 1px solid #BFE3CF; }
+.ley.n2 { border-left: 2px solid #BFE3CF; border-bottom: 2px solid #BFE3CF; }
+.ley.n3 { border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); margin-left: 4px; }
+.tabla-card .agregar-linea { width: auto; margin: 6px 18px 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
