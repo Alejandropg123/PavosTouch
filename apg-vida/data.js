@@ -89,7 +89,15 @@ const Datos = {
     db[t] = db[t].filter((r) => r.id !== id);
     // Lo mismo que hace la base de datos: borrar lo que depende y soltar referencias.
     if (t === 'habitos') db.habito_registros = db.habito_registros.filter((r) => r.habito_id !== id);
-    if (t === 'tareas') db.tareas = db.tareas.filter((r) => r.padre_id !== id);
+    if (t === 'tareas') {
+      // Borra también subtareas y sub-subtareas
+      const quitar = new Set([id]);
+      for (let cambio = true; cambio;) {
+        cambio = false;
+        db.tareas.forEach((r) => { if (r.padre_id && quitar.has(r.padre_id) && !quitar.has(r.id)) { quitar.add(r.id); cambio = true; } });
+      }
+      db.tareas = db.tareas.filter((r) => !quitar.has(r.id));
+    }
     if (t === 'pagos') db.pago_historial = db.pago_historial.filter((r) => r.pago_id !== id);
     if (t === 'categorias') {
       db.tareas.forEach((r) => { if (r.lista_id === id) r.lista_id = null; });
@@ -268,7 +276,7 @@ function datosDemo() {
   const doc = (nombre, carpeta, persona, numero, exp, venc) => ({ id: uid(), nombre, carpeta_id: cat('carpeta', carpeta), persona, numero, fecha_expedicion: exp, fecha_vencimiento: venc, notas: null, archivos: [], created_at: new Date().toISOString() });
   // Tarea con subtareas de ejemplo
   const mudanza = t('Organizar mudanza', d(12), 'alta', 'Personal', null, false, true);
-  return {
+  const r = {
     categorias, habitos, habito_registros,
     tareas: [
       t('Llamar al banco por el extracto', d(-1), 'alta', 'Personal', null, true, true),
@@ -280,6 +288,8 @@ function datosDemo() {
       mudanza,
       ...[['Cotizar camión', true], ['Comprar cajas', true], ['Avisar al arrendador', true], ['Empacar cocina', false], ['Cambiar dirección en el banco', false]]
         .map(([titulo, hecha], i) => ({ ...t(titulo, null, null, null), padre_id: mudanza.id, hecha, hecha_en: hecha ? new Date().toISOString() : null, created_at: new Date(Date.now() + i).toISOString() })),
+      ...[['Envolver la vajilla', true], ['Empacar ollas y sartenes', false]]
+        .map(([titulo, hecha], i) => ({ ...t(titulo, null, null, null), padre_id: null, _de: 'Empacar cocina', hecha, hecha_en: hecha ? new Date().toISOString() : null, created_at: new Date(Date.now() + 10 + i).toISOString() })),
     ],
     pagos: [
       p('Arriendo', 'mensual', d(2), 1500000, 'Hogar', 'Bancolombia'),
@@ -300,6 +310,10 @@ function datosDemo() {
       doc('Póliza de salud', 'Importantes', 'Familia', 'POL-778812', d(-200), d(165)),
     ],
   };
+  // Sub-subtareas de ejemplo: cuelgan de "Empacar cocina"
+  const cocina = r.tareas.find((x) => x.titulo === 'Empacar cocina');
+  r.tareas.forEach((x) => { if (x._de) { x.padre_id = cocina.id; delete x._de; } });
+  return r;
 }
 
 function reiniciarDemo() {
